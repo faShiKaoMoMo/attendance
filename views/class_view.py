@@ -21,13 +21,18 @@ def handle_class_data():
         try:
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
-
-            cursor.execute('SELECT content FROM `class` ORDER BY id DESC LIMIT 1')
+            cursor.execute('SELECT * FROM `class` ORDER BY id DESC LIMIT 1')
             row = cursor.fetchone()
             conn.close()
 
             if row:
-                data = json.loads(row[0])
+                data = {
+                    "id": row[0],
+                    "content": json.loads(row[1]) if row[1] else None,
+                    "start_date": row[2],
+                    "create_date": row[3],
+                    "update_date": row[4]
+                }
                 return jsonify(data)
             else:
                 return jsonify({})
@@ -37,18 +42,23 @@ def handle_class_data():
     if request.method == 'POST':
         try:
             new_data = request.get_json()
-            content_str = json.dumps(new_data, ensure_ascii=False)
-            now = datetime.now()
+
+            content_str = json.dumps(new_data.get("content", {}), ensure_ascii=False)
+            start_date = new_data.get("start_date")  # 例如 "2025/09/01"
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
-
             cursor.execute(
-                'INSERT INTO class (content, create_date, update_date) VALUES (?, ?, ?)',
-                (content_str, now, now)
+                '''
+                INSERT INTO class (content, start_date, create_date, update_date)
+                VALUES (?, ?, ?, ?)
+                ''',
+                (content_str, start_date, now, now)
             )
             conn.commit()
             conn.close()
-            return jsonify({"success": "Class data saved successfully"})
+
+            return jsonify({"success": True})
         except Exception as e:
             return jsonify({"error": str(e)}), 500

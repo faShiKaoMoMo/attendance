@@ -278,18 +278,19 @@
         /**
          * 从后端加载数据并渲染表格
          */
-        async function loadSchedule() {
-            try {
-                const response = await fetch('/class/api');
-                if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
-                const data = await response.json();
-                renderTable(data);
-            } catch (error) {
-                statusSpan.textContent = `加载失败: ${error.message}`;
-                statusSpan.style.color = 'red';
-            }
-        }
+async function loadSchedule() {
+    try {
+        const response = await fetch('/class/api');
+        if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
 
+        const data = await response.json();
+        const tableData = data.content || {};
+        renderTable(tableData);
+    } catch (error) {
+        statusSpan.textContent = `加载失败: ${error.message}`;
+        statusSpan.style.color = 'red';
+    }
+}
         /**
          * 渲染整个表格
          * @param {object} data - 从API获取的课表数据
