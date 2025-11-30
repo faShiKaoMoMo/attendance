@@ -1,0 +1,12 @@
+# 虚拟环境
+venv/
+env/
+
+# Python 编译文件
+__pycache__/
+*.pyc
+
+# IDE 配置 (PyCharm/VSCode)
+.idea/
+.vscode/
+*.swp

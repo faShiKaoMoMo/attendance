@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生课表</title>
+    <style>
+        body {
+            font-family: Arial, "Helvetica Neue", "Microsoft YaHei", sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #343a40;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #save-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        #save-btn:hover {
+            background-color: #218838;
+        }
+
+        #status { /* 保留以防万一，但主要由弹窗替代 */
+            margin-left: 15px;
+            font-weight: bold;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .schedule-table th, .schedule-table td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .schedule-table th {
+            background-color: #f1f3f5;
+            font-weight: bold;
+        }
+
+        .time-slot {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .entry-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: #f0f2f5;
+            border: 1px solid #dde1e6;
+        }
+
+        .entry-item:hover {
+            border-color: #007bff;
+        }
+
+        .entry-item input {
+            flex-grow: 1;
+            min-width: 0;
+            border: 1px solid #ced4da;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .entry-item select {
+            flex-shrink: 0;
+            width: 75px;
+            padding: 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+
+        .delete-entry-btn {
+            flex-shrink: 0;
+            cursor: pointer;
+            background-color: #e4e6eb;
+            color: #4b4f56;
+            border: 1px solid #ced4da;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            line-height: 24px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .delete-entry-btn:hover {
+            background-color: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .add-person-btn {
+            margin-top: 10px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .add-person-btn:hover {
+            background-color: #0069d9;
+        }
+
+        /* --- 新增弹窗样式 --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; /* 默认隐藏 */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 25px 35px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            min-width: 280px;
+            max-width: 90%;
+        }
+
+        .modal-content p {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .modal-content .modal-buttons button {
+            padding: 10px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.2s;
+        }
+
+        .modal-content .modal-buttons button:hover {
+            background-color: #0056b3;
+        }
+
+        .modal-content .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>学生课表</h1>
+<div class="controls">
+    <button id="save-btn">保存课表</button>
+    <!-- statusSpan 不再用于显示保存状态，但可以保留用于显示加载失败等信息 -->
+    <span id="status"></span>
+</div>
+
+<table class="schedule-table">
+    <thead>
+    <tr>
+        <th style="width: 12%;">时间</th>
+        <th>星期一</th>
+        <th>星期二</th>
+        <th>星期三</th>
+        <th>星期四</th>
+        <th>星期五</th>
+    </tr>
+    </thead>
+    <tbody id="schedule-body">
+    <!-- Loading content... -->
+    </tbody>
+</table>
+
+<!-- 新增弹窗HTML结构 -->
+<div id="modal" class="modal-overlay">
+    <div class="modal-content">
+        <div id="modal-body"></div>
+        <div id="modal-buttons" class="modal-buttons"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const scheduleBody = document.getElementById('schedule-body');
+        const saveBtn = document.getElementById('save-btn');
+        const statusSpan = document.getElementById('status');
+        const modal = document.getElementById('modal');
+        const modalBody = document.getElementById('modal-body');
+        const modalButtons = document.getElementById('modal-buttons');
+        const weekTypes = {
+            'all': '全部',
+            'odd': '单周',
+            'even': '双周'
+        };
+
+        /**
+         * 显示弹窗
+         * @param {string} type - 弹窗类型 ('loading', 'success', 'error')
+         * @param {string} message - 显示的信息
+         */
+        function showModal(type, message) {
+            modalBody.innerHTML = '';
+            modalButtons.innerHTML = '';
+
+            switch (type) {
+                case 'loading':
+                    modalBody.innerHTML = `<div class="spinner"></div><p>${message}</p>`;
+                    break;
+                case 'success':
+                case 'error':
+                    modalBody.innerHTML = `<p>${message}</p>`;
+                    const okButton = document.createElement('button');
+                    okButton.textContent = '确定';
+                    okButton.onclick = () => modal.style.display = 'none';
+                    modalButtons.appendChild(okButton);
+                    break;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        /**
+         * 从后端加载数据并渲染表格
+         */
+        async function loadSchedule() {
+            try {
+                const response = await fetch('/class/api');
+                if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
+                const data = await response.json();
+                renderTable(data);
+            } catch (error) {
+                statusSpan.textContent = `加载失败: ${error.message}`;
+                statusSpan.style.color = 'red';
+            }
+        }
+
+        /**
+         * 渲染整个表格
+         * @param {object} data - 从API获取的课表数据
+         */
+        function renderTable(data) {
+            scheduleBody.innerHTML = '';
+            if (!data['0']) return; // 如果数据格式不正确则提前退出
+
+            const timeSlots = data['0'].map(slot => slot.time.join(' - '));
+
+            timeSlots.forEach((timeLabel, timeIndex) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td class="time-slot">${timeLabel}</td>`;
+
+                for (let dayIndex = 0; dayIndex < 5; dayIndex++) {
+                    const cell = document.createElement('td');
+                    cell.dataset.day = dayIndex;
+                    cell.dataset.timeIndex = timeIndex;
+
+                    const dayData = data[dayIndex.toString()];
+                    const slotData = dayData ? dayData[timeIndex] : null;
+
+                    if (slotData && slotData.names) {
+                        slotData.names.forEach(person => {
+                            cell.appendChild(createEntryElement(person[0], person[1]));
+                        });
+                    }
+
+                    const addButton = document.createElement('button');
+                    addButton.textContent = '添加人员';
+                    addButton.className = 'add-person-btn';
+                    addButton.onclick = () => {
+                        cell.insertBefore(createEntryElement('', 'all'), addButton);
+                    };
+                    cell.appendChild(addButton);
+                    row.appendChild(cell);
+                }
+                scheduleBody.appendChild(row);
+            });
+        }
+
+        /**
+         * 创建一个可编辑的人员条目元素
+         * @param {string} name - 人员姓名
+         * @param {string} type - 周数类型 (all, odd, even)
+         * @returns {HTMLElement} - 代表一个条目的div元素
+         */
+        function createEntryElement(name, type) {
+            const div = document.createElement('div');
+            div.className = 'entry-item';
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.value = name;
+            nameInput.placeholder = '姓名';
+
+            const typeSelect = document.createElement('select');
+            for (const [key, value] of Object.entries(weekTypes)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = value;
+                if (key === type) {
+                    option.selected = true;
+                }
+                typeSelect.appendChild(option);
+            }
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '×';
+            deleteBtn.className = 'delete-entry-btn';
+            deleteBtn.title = '删除此条目';
+            deleteBtn.onclick = () => div.remove();
+
+            div.appendChild(nameInput);
+            div.appendChild(typeSelect);
+            div.appendChild(deleteBtn);
+
+            return div;
+        }
+
+        /**
+         * 保存按钮的点击事件处理
+         */
+        saveBtn.addEventListener('click', async () => {
+            const newData = {};
+            const rows = scheduleBody.querySelectorAll('tr');
+
+            for (let dayIndex = 0; dayIndex < 5; dayIndex++) {
+                newData[dayIndex.toString()] = [];
+            }
+
+            rows.forEach((row, timeIndex) => {
+                const timeText = row.querySelector('.time-slot').textContent.split(' - ');
+
+                row.querySelectorAll('td[data-day]').forEach(cell => {
+                    const dayIndex = cell.dataset.day;
+                    const names = [];
+                    cell.querySelectorAll('.entry-item').forEach(item => {
+                        const name = item.querySelector('input').value.trim();
+                        const type = item.querySelector('select').value;
+                        if (name) { // 只有姓名不为空时才保存
+                            names.push([name, type]);
+                        }
+                    });
+
+                    newData[dayIndex].push({
+                        time: timeText,
+                        names: names
+                    });
+                });
+            });
+
+            // 调用弹窗替代 statusSpan
+            showModal('loading', '保存中...');
+
+            try {
+                const response = await fetch('/class/api', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(newData)
+                });
+                if (!response.ok) throw new Error(`服务器错误: ${response.statusText}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    showModal('success', '保存成功！');
+                } else {
+                    throw new Error(result.error || '未知错误');
+                }
+            } catch (error) {
+                showModal('error', `保存失败: ${error.message}`);
+            }
+        });
+
+        // 初始加载页面数据
+        loadSchedule();
+    });
+</script>
+
+</body>
+</html>

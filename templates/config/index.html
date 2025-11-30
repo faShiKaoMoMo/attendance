@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考勤配置</title>
+    <style>
+        /* --- 通用样式 --- */
+        body {
+            font-family: Arial, "Helvetica Neue", "Microsoft YaHei", sans-serif;
+            margin: 40px auto;
+            max-width: 80%;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        h1 { text-align: center; color: #343a40; margin-top: 0; }
+        .status { text-align: center; font-weight: bold; height: 20px; margin-bottom: 20px; }
+        .controls { text-align: center; margin-bottom: 20px; }
+        .controls button {
+            padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff;
+            color: white; border: none; border-radius: 5px; transition: background-color 0.3s;
+        }
+        .controls button:hover { background-color: #0069d9; }
+        .config-table, .account-table {
+            width: 100%; border-collapse: collapse; background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .config-table th, .config-table td, .account-table th, .account-table td {
+            border: 1px solid #dee2e6; padding: 12px; text-align: left; vertical-align: middle;
+        }
+        .config-table th, .account-table th {
+            background-color: #f1f3f5; font-weight: bold; text-align: center;
+        }
+        .config-table input, .account-table input {
+            width: 100%; box-sizing: border-box; border: 1px solid #ced4da;
+            padding: 8px; border-radius: 4px; font-size: 14px;
+        }
+        .config-table input:focus, .account-table input:focus {
+            border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
+        }
+        .action-buttons { text-align: center; white-space: nowrap; }
+        .action-buttons button {
+            cursor: pointer; border: none; border-radius: 4px; padding: 6px 12px;
+            font-size: 14px; color: white; transition: background-color 0.2s; margin: 0 4px;
+        }
+        .save-row-btn { background-color: #28a745; }
+        .remove-row-btn { background-color: #dc3545; }
+        hr { margin: 60px auto; border: 0; height: 1px; background-color: #dee2e6; }
+
+        /* --- 弹窗样式 --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); display: none; justify-content: center;
+            align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background-color: white; padding: 25px 35px; border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); text-align: center;
+            min-width: 320px; max-width: 90%;
+        }
+        .modal-content p { margin: 0 0 20px 0; font-size: 18px; color: #333; }
+        .modal-buttons button {
+            padding: 10px 25px; font-size: 16px; cursor: pointer; border: none;
+            border-radius: 5px; background-color: #007bff; color: white;
+            transition: background-color 0.2s;
+        }
+        .modal-content .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="status" class="status"></div>
+
+<!-- ==================== 实验室配置 ==================== -->
+<section>
+    <h1>实验室配置</h1>
+    <div class="controls">
+        <button id="add-config-btn">新增配置</button>
+    </div>
+    <table class="config-table">
+        <thead>
+        <tr>
+            <th style="width: 15%;">名称</th>
+            <th style="width: 20%;">实验室</th>
+            <th style="width: 50%;">排除人员 (逗号分隔)</th>
+            <th style="width: 15%;">操作</th>
+        </tr>
+        </thead>
+        <tbody id="config-list"></tbody>
+    </table>
+</section>
+
+<hr>
+
+<!-- ==================== 账号配置 ==================== -->
+<section>
+    <h1>账号配置</h1>
+    <div class="controls">
+        <button id="add-account-btn">新增账号</button>
+    </div>
+    <table class="account-table">
+        <thead>
+        <tr>
+            <th style="width: 15%;">姓名</th>
+            <th style="width: 20%;">手机号</th>
+            <th style="width: 20%;">密码</th>
+            <th style="width: 30%;">邮箱（逗号分隔）</th>
+            <th style="width: 15%;">操作</th>
+        </tr>
+        </thead>
+        <tbody id="account-list"></tbody>
+    </table>
+</section>
+
+<!-- 通用通知弹窗 -->
+<div id="modal" class="modal-overlay">
+    <div class="modal-content">
+        <div id="modal-body"></div>
+        <div class="modal-buttons" id="modal-buttons"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // DOM 元素
+    const configListBody = document.getElementById('config-list');
+    const addConfigBtn = document.getElementById('add-config-btn');
+    const accountListBody = document.getElementById('account-list');
+    const addAccountBtn = document.getElementById('add-account-btn');
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+
+    // ==================== 通用函数 ====================
+
+    /**
+     * 显示通知弹窗
+     */
+    function showModal(type, message) {
+        modalBody.innerHTML = '';
+        modalButtons.innerHTML = '';
+        switch (type) {
+            case 'loading':
+                modalBody.innerHTML = `<div class="spinner"></div><p>${message}</p>`;
+                break;
+            case 'success':
+            case 'error':
+                modalBody.innerHTML = `<p>${message}</p>`;
+                const okButton = document.createElement('button');
+                okButton.textContent = '确定';
+                okButton.onclick = () => {
+                    modal.style.display = 'none';
+                    if (type === 'success') {
+                        loadAllData();
+                    }
+                };
+                modalButtons.appendChild(okButton);
+                break;
+        }
+        modal.style.display = 'flex';
+    }
+
+    // ==================== 数据加载 ====================
+
+    /**
+     * 并行加载所有配置和账户数据
+     */
+    async function loadAllData() {
+        try {
+            const [configResponse, accountResponse] = await Promise.all([
+                fetch('/config/api'),
+                fetch('/config/account')
+            ]);
+            if (!configResponse.ok) throw new Error(`加载考勤配置失败`);
+            if (!accountResponse.ok) throw new Error(`加载账号失败`);
+
+            const configData = await configResponse.json();
+            const accounts = await accountResponse.json();
+            renderConfigList(configData);
+            renderAccountList(accounts);
+        } catch (error) {
+            showModal('error', `数据加载失败: ${error.message}`);
+        }
+    }
+
+    // ==================== 实验室配置 (Config) ====================
+
+    function renderConfigList(data) {
+        configListBody.innerHTML = '';
+        if (!data || data.length === 0) {
+            configListBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">暂无实验室配置数据</td></tr>';
+            return;
+        }
+        data.forEach(item => configListBody.appendChild(createConfigRow(item)));
+    }
+
+    function createConfigRow(config = {}) {
+        const tr = document.createElement('tr');
+        tr.dataset.id = config.id || '';
+        const excludedStr = (config.excluded_name || []).join(', ');
+        tr.innerHTML = `
+            <td><input type="text" class="config-name" value="${config.name || ''}" placeholder="翔安/海韵"></td>
+            <td><input type="text" class="config-lab" value="${config.lab || ''}" placeholder="得力e+的实验室名称"></td>
+            <td><input type="text" class="config-excluded" value="${excludedStr}" placeholder="张三, 李四"></td>
+            <td class="action-buttons">
+                <button class="save-row-btn">保存</button>
+                ${!config.id ? '<button class="remove-row-btn">移除</button>' : ''}
+            </td>`;
+        return tr;
+    }
+
+    async function saveConfigRowData(rowElement) {
+        const id = rowElement.dataset.id || null;
+        const name = rowElement.querySelector('.config-name').value.trim();
+        const lab = rowElement.querySelector('.config-lab').value.trim();
+        const excludedStr = rowElement.querySelector('.config-excluded').value.trim();
+        if (!name || !lab) return showModal('error', '“配置名称”和“实验室”不能为空！');
+
+        const excluded_name = excludedStr ? excludedStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const payload = {id, name, lab, excluded_name};
+        if (!payload.id) delete payload.id;
+
+        showModal('loading', '保存中...');
+        try {
+            const response = await fetch('/config/api', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`服务器错误`);
+            const result = await response.json();
+            if (result.success) showModal('success', '实验室配置保存成功！');
+            else throw new Error(result.error || '未知错误');
+        } catch (error) {
+            showModal('error', `保存失败: ${error.message}`);
+        }
+    }
+
+    // ==================== 账号配置 (Account) ====================
+
+    function renderAccountList(data) {
+        accountListBody.innerHTML = '';
+        if (!data || data.length === 0) {
+            accountListBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">暂无账号数据</td></tr>';
+            return;
+        }
+        data.forEach(item => accountListBody.appendChild(createAccountRow(item)));
+    }
+
+    function createAccountRow(account = {}) {
+        const tr = document.createElement('tr');
+        tr.dataset.id = account.id || '';
+        tr.innerHTML = `
+            <td><input type="text" class="account-name" value="${account.name || ''}"></td>
+            <td><input type="text" class="account-mobile" value="${account.mobile || ''}" placeholder="得力e+的手机"></td>
+            <td><input type="text" class="account-password" value="${account.password || ''}" placeholder="得力e+的密码"></td>
+            <td><input type="email" class="account-email" value="${account.email || ''}"></td>
+            <td class="action-buttons">
+                <button class="save-row-btn">保存</button>
+                ${!account.id ? '<button class="remove-row-btn">移除</button>' : ''}
+            </td>
+        `;
+        return tr;
+    }
+
+    async function saveAccountRowData(rowElement) {
+        const id = rowElement.dataset.id || null;
+        const name = rowElement.querySelector('.account-name').value.trim();
+        const mobile = rowElement.querySelector('.account-mobile').value.trim();
+        const password = rowElement.querySelector('.account-password').value.trim();
+        const email = rowElement.querySelector('.account-email').value.trim();
+
+        if (!name || !mobile) return showModal('error', '“姓名”和“手机号”不能为空！');
+        if (!id && !password) return showModal('error', '新增账号时，“密码”不能为空！');
+
+        const payload = {id, name, mobile, password, email};
+        if (!payload.id) delete payload.id;
+        if (!payload.password) delete payload.password;
+
+        showModal('loading', '保存中...');
+        try {
+            const response = await fetch('/config/account', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`服务器错误`);
+            const result = await response.json();
+            if (result.success) showModal('success', '账号信息保存成功！');
+            else throw new Error(result.error || '未知错误');
+        } catch (error) {
+            showModal('error', `保存失败: ${error.message}`);
+        }
+    }
+
+    // ==================== 事件监听 ====================
+
+    // "新增" 按钮
+    addConfigBtn.addEventListener('click', () => configListBody.prepend(createConfigRow()));
+    addAccountBtn.addEventListener('click', () => accountListBody.prepend(createAccountRow()));
+
+    // 考勤组表格事件代理
+    configListBody.addEventListener('click', function (event) {
+        const target = event.target;
+        const row = target.closest('tr');
+        if (!row) return;
+        if (target.classList.contains('save-row-btn')) {
+            saveConfigRowData(row);
+        } else if (target.classList.contains('remove-row-btn')) {
+            row.remove();
+        }
+    });
+
+    // 账号表格事件代理
+    accountListBody.addEventListener('click', function (event) {
+        const target = event.target;
+        const row = target.closest('tr');
+        if (!row) return;
+
+        if (target.classList.contains('save-row-btn')) {
+            saveAccountRowData(row);
+        } else if (target.classList.contains('remove-row-btn')) {
+            row.remove();
+        }
+    });
+
+    // 初始加载页面所有数据
+    loadAllData();
+});
+</script>
+
+</body>
+</html>

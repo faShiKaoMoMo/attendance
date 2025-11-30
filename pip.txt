@@ -1,0 +1,6 @@
+pip install flask
+pip install selenium
+pip install selenium-wire
+pip install requests
+pip install openpyxl
+pip install blinker==1.6.3

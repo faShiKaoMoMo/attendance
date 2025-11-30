@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>欢迎来到考勤系统</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        h1 { color: #333; }
+        .nav-link {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 18px;
+            text-decoration: none;
+            color: white;
+            background-color: #007bff;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .nav-link:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>考勤管理系统</h1>
+    <nav>
+        <a href="{{ url_for('class.index') }}" class="nav-link">学生课表</a>
+        <a href="{{ url_for('config.index') }}" class="nav-link">考勤配置</a>
+        <a href="{{ url_for('attendance.index') }}" class="nav-link">考勤统计</a>
+    </nav>
+</body>
+</html>
