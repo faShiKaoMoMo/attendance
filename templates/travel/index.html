@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出差统计管理</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+            --gray-color: #95a5a6;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        nav ul li {
+            margin-left: 1.5rem;
+        }
+
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        nav ul li a:hover, nav ul li a.active {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        main {
+            padding: 2rem 0;
+            min-height: calc(100vh - 140px);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h1, h2, h3 {
+            margin-bottom: 1rem;
+            color: var(--dark-color);
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--secondary-color);
+        }
+
+        .btn-success:hover {
+            background: #27ae60;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+        }
+
+        .btn-warning:hover {
+            background: #d35400;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .stat-card p {
+            color: var(--gray-color);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-color);
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        footer {
+            background-color: var(--dark-color);
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: 2rem;
+        }
+
+        #dashboard {
+            & h1 {
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            nav ul {
+                margin-top: 1rem;
+                justify-content: center;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="container">
+    <!-- 仪表板页面 -->
+    <section id="dashboard" class="page active">
+        <h1>出差统计管理</h1>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="total-requests">0</h3>
+                <p>总出差请求</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pending-requests">0</h3>
+                <p>待审批请求</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="approved-requests">0</h3>
+                <p>已批准请求</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="completed-trips">0</h3>
+                <p>已完成出差</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>快速操作</h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button class="btn" id="new-request-btn">新增出差请求</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>出差记录</h2>
+            <h2>所有出差记录</h2>
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="record-status-filter">状态筛选</label>
+                    <select id="record-status-filter">
+                        <option value="all">全部状态</option>
+                        <option value="upcoming">即将出发</option>
+                        <option value="ongoing">进行中</option>
+                        <option value="completed">已完成</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="date-filter">日期范围</label>
+                    <input type="month" id="date-filter">
+                </div>
+                <div class="filter-group">
+                    <button class="btn btn-success" id="select-btn">查询</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="recent-requests">
+                    <thead>
+                    <tr>
+                        <th>出差人</th>
+                        <th>目的地</th>
+                        <th>开始日期</th>
+                        <th>结束日期</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 出差请求页面 -->
+    <section id="requests" class="page">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h1>出差请求</h1>
+            <button class="btn" id="add-request-btn">新增出差请求</button>
+        </div>
+
+        <div class="card">
+            <h2>我的出差请求</h2>
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="status-filter">状态筛选</label>
+                    <select id="status-filter">
+                        <option value="all">全部状态</option>
+                        <option value="pending">待审批</option>
+                        <option value="approved">已批准</option>
+                        <option value="rejected">已拒绝</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="requests-table">
+                    <thead>
+                    <tr>
+                        <th>目的地</th>
+                        <th>开始日期</th>
+                        <th>结束日期</th>
+                        <th>出差目的</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 出差记录页面 -->
+    <section id="records" class="page">
+        <h1>出差记录</h1>
+
+        <div class="card">
+            <h2>所有出差记录</h2>
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="record-status-filter">状态筛选</label>
+                    <select id="record-status-filter">
+                        <option value="all">全部状态</option>
+                        <option value="upcoming">即将出发</option>
+                        <option value="ongoing">进行中</option>
+                        <option value="completed">已完成</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="date-filter">日期范围</label>
+                    <input type="month" id="date-filter">
+                </div>
+                <button class="btn" id="select-btn">查询</button>
+            </div>
+
+            <div class="table-container">
+                <table id="records-table">
+                    <thead>
+                    <tr>
+                        <th>员工</th>
+                        <th>目的地</th>
+                        <th>开始日期</th>
+                        <th>结束日期</th>
+                        <th>出差目的</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- 新增出差请求模态框 -->
+<div id="request-modal" class="modal">
+    <div class="modal-content">
+        <button class="close-modal">&times;</button>
+        <h2>新增出差请求</h2>
+        <form id="request-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="destination">目的地 *</label>
+                    <input type="text" id="destination" required>
+                </div>
+                <div class="form-group">
+                    <label for="purpose">出差目的 *</label>
+                    <input type="text" id="purpose" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start-date">开始日期 *</label>
+                    <input type="date" id="start-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="end-date">结束日期 *</label>
+                    <input type="date" id="end-date" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="budget">预算 (元)</label>
+                <input type="number" id="budget" min="0" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label for="description">详细说明</label>
+                <textarea id="description"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-danger close-modal">取消</button>
+                <button type="submit" class="btn">提交请求</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 出差详情模态框 -->
+<div id="detail-modal" class="modal">
+    <div class="modal-content">
+        <button class="close-modal">&times;</button>
+        <h2>出差详情</h2>
+        <div id="detail-content">
+            <!-- 动态填充 -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // 模拟数据
+    let businessTrips = JSON.parse(localStorage.getItem('businessTrips')) || [
+        {
+            id: 1,
+            employee: "张三",
+            destination: "北京",
+            purpose: "客户会议",
+            startDate: "2023-10-15",
+            endDate: "2023-10-18",
+            budget: 3500,
+            description: "与重要客户进行季度业务回顾会议",
+            status: "approved",
+            createdAt: "2023-10-10"
+        },
+        {
+            id: 2,
+            employee: "李四",
+            destination: "上海",
+            purpose: "技术培训",
+            startDate: "2023-10-20",
+            endDate: "2023-10-25",
+            budget: 4200,
+            description: "参加为期5天的云计算技术培训",
+            status: "pending",
+            createdAt: "2023-10-12"
+        },
+        {
+            id: 3,
+            employee: "王五",
+            destination: "广州",
+            purpose: "项目考察",
+            startDate: "2023-10-05",
+            endDate: "2023-10-08",
+            budget: 2800,
+            description: "考察新项目现场并评估实施条件",
+            status: "completed",
+            createdAt: "2023-09-28"
+        }
+    ];
+
+    // 页面元素
+    const pages = document.querySelectorAll('.page');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const requestModal = document.getElementById('request-modal');
+    const detailModal = document.getElementById('detail-modal');
+    const requestForm = document.getElementById('request-form');
+    const closeModalButtons = document.querySelectorAll('.close-modal');
+    const newRequestBtn = document.getElementById('new-request-btn');
+    const addRequestBtn = document.getElementById('add-request-btn');
+    const statusFilter = document.getElementById('status-filter');
+    const recordStatusFilter = document.getElementById('record-status-filter');
+    const dateFilter = document.getElementById('date-filter');
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 加载数据
+        updateDashboard();
+        renderRequestsTable();
+        renderRecordsTable();
+        renderRecentRequests();
+
+        // 导航事件
+        navLinks.forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const pageId = this.getAttribute('data-page');
+
+                // 更新导航状态
+                navLinks.forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+
+                // 显示对应页面
+                pages.forEach(page => page.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+            });
+        });
+
+        // 模态框事件
+        newRequestBtn.addEventListener('click', () => requestModal.classList.add('active'));
+        addRequestBtn.addEventListener('click', () => requestModal.classList.add('active'));
+
+        closeModalButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                requestModal.classList.remove('active');
+                detailModal.classList.remove('active');
+            });
+        });
+
+        // 表单提交
+        requestForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            addNewRequest();
+        });
+
+        // 筛选事件
+        statusFilter.addEventListener('change', renderRequestsTable);
+        recordStatusFilter.addEventListener('change', renderRecordsTable);
+        dateFilter.addEventListener('change', renderRecordsTable);
+    });
+
+    // 更新仪表板数据
+    function updateDashboard() {
+        const totalRequests = businessTrips.length;
+        const pendingRequests = businessTrips.filter(trip => trip.status === 'pending').length;
+        const approvedRequests = businessTrips.filter(trip => trip.status === 'approved').length;
+        const completedTrips = businessTrips.filter(trip => trip.status === 'completed').length;
+
+        document.getElementById('total-requests').textContent = totalRequests;
+        document.getElementById('pending-requests').textContent = pendingRequests;
+        document.getElementById('approved-requests').textContent = approvedRequests;
+        document.getElementById('completed-trips').textContent = completedTrips;
+    }
+
+    // 渲染出差请求表格
+    function renderRequestsTable() {
+        const tableBody = document.querySelector('#requests-table tbody');
+        const statusFilterValue = statusFilter.value;
+
+        // 清空表格
+        tableBody.innerHTML = '';
+
+        // 筛选数据
+        let filteredTrips = businessTrips;
+        if (statusFilterValue !== 'all') {
+            filteredTrips = businessTrips.filter(trip => trip.status === statusFilterValue);
+        }
+
+        // 填充表格
+        filteredTrips.forEach(trip => {
+            const row = document.createElement('tr');
+
+            // 根据状态确定显示类
+            let statusClass = '';
+            let statusText = '';
+            switch (trip.status) {
+                case 'pending':
+                    statusClass = 'status-pending';
+                    statusText = '待审批';
+                    break;
+                case 'approved':
+                    statusClass = 'status-approved';
+                    statusText = '已批准';
+                    break;
+                case 'rejected':
+                    statusClass = 'status-rejected';
+                    statusText = '已拒绝';
+                    break;
+                case 'completed':
+                    statusClass = 'status-completed';
+                    statusText = '已完成';
+                    break;
+            }
+
+            row.innerHTML = `
+                    <td>${trip.destination}</td>
+                    <td>${formatDate(trip.startDate)}</td>
+                    <td>${formatDate(trip.endDate)}</td>
+                    <td>${trip.purpose}</td>
+                    <td><span class="status ${statusClass}">${statusText}</span></td>
+                    <td class="actions">
+                        <button class="btn" onclick="viewRequestDetails(${trip.id})">查看</button>
+                        ${trip.status === 'pending' ? `<button class="btn btn-danger" onclick="cancelRequest(${trip.id})">取消</button>` : ''}
+                    </td>
+                `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // 渲染出差记录表格
+    function renderRecordsTable() {
+        const tableBody = document.querySelector('#records-table tbody');
+        const statusFilterValue = recordStatusFilter.value;
+        const dateFilterValue = dateFilter.value;
+
+        // 清空表格
+        tableBody.innerHTML = '';
+
+        // 筛选数据
+        let filteredTrips = businessTrips;
+
+        // 状态筛选
+        if (statusFilterValue !== 'all') {
+            filteredTrips = filteredTrips.filter(trip => {
+                const today = new Date();
+                const startDate = new Date(trip.startDate);
+                const endDate = new Date(trip.endDate);
+
+                if (statusFilterValue === 'upcoming') {
+                    return startDate > today && trip.status === 'approved';
+                } else if (statusFilterValue === 'ongoing') {
+                    return startDate <= today && endDate >= today && trip.status === 'approved';
+                } else if (statusFilterValue === 'completed') {
+                    return trip.status === 'completed';
+                }
+                return true;
+            });
+        }
+
+        // 日期筛选
+        if (dateFilterValue) {
+            const [year, month] = dateFilterValue.split('-');
+            filteredTrips = filteredTrips.filter(trip => {
+                const tripDate = new Date(trip.startDate);
+                return tripDate.getFullYear() === parseInt(year) &&
+                    tripDate.getMonth() + 1 === parseInt(month);
+            });
+        }
+
+        // 填充表格
+        filteredTrips.forEach(trip => {
+            const row = document.createElement('tr');
+
+            // 根据状态确定显示类
+            let statusClass = '';
+            let statusText = '';
+            switch (trip.status) {
+                case 'pending':
+                    statusClass = 'status-pending';
+                    statusText = '待审批';
+                    break;
+                case 'approved':
+                    // 检查出差是否正在进行或即将开始
+                    const today = new Date();
+                    const startDate = new Date(trip.startDate);
+                    const endDate = new Date(trip.endDate);
+
+                    if (startDate > today) {
+                        statusClass = 'status-approved';
+                        statusText = '即将出发';
+                    } else if (startDate <= today && endDate >= today) {
+                        statusClass = 'status-warning';
+                        statusText = '进行中';
+                    } else {
+                        statusClass = 'status-completed';
+                        statusText = '已完成';
+                    }
+                    break;
+                case 'rejected':
+                    statusClass = 'status-rejected';
+                    statusText = '已拒绝';
+                    break;
+                case 'completed':
+                    statusClass = 'status-completed';
+                    statusText = '已完成';
+                    break;
+            }
+
+            row.innerHTML = `
+                    <td>${trip.employee}</td>
+                    <td>${trip.destination}</td>
+                    <td>${formatDate(trip.startDate)}</td>
+                    <td>${formatDate(trip.endDate)}</td>
+                    <td>${trip.purpose}</td>
+                    <td><span class="status ${statusClass}">${statusText}</span></td>
+                    <td class="actions">
+                        <button class="btn" onclick="viewRequestDetails(${trip.id})">查看</button>
+                    </td>
+                `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // 渲染最近出差请求
+    function renderRecentRequests() {
+        const tableBody = document.querySelector('#recent-requests tbody');
+
+        // 清空表格
+        tableBody.innerHTML = '';
+
+        // 获取最近的5条记录
+        const recentTrips = [...businessTrips]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 5);
+
+        // 填充表格
+        recentTrips.forEach(trip => {
+            const row = document.createElement('tr');
+
+            // 根据状态确定显示类
+            let statusClass = '';
+            let statusText = '';
+            switch (trip.status) {
+                case 'pending':
+                    statusClass = 'status-pending';
+                    statusText = '待审批';
+                    break;
+                case 'approved':
+                    statusClass = 'status-approved';
+                    statusText = '已批准';
+                    break;
+                case 'rejected':
+                    statusClass = 'status-rejected';
+                    statusText = '已拒绝';
+                    break;
+                case 'completed':
+                    statusClass = 'status-completed';
+                    statusText = '已完成';
+                    break;
+            }
+
+            row.innerHTML = `
+                    <td>${trip.employee}</td>
+                    <td>${trip.destination}</td>
+                    <td>${formatDate(trip.startDate)}</td>
+                    <td>${formatDate(trip.endDate)}</td>
+                    <td><span class="status ${statusClass}">${statusText}</span></td>
+                    <td class="actions">
+                        <button class="btn" onclick="viewRequestDetails(${trip.id})">查看</button>
+                    </td>
+                `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    // 添加新的出差请求
+    function addNewRequest() {
+        const destination = document.getElementById('destination').value;
+        const purpose = document.getElementById('purpose').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const budget = document.getElementById('budget').value;
+        const description = document.getElementById('description').value;
+
+        // 创建新的出差请求
+        const newRequest = {
+            id: businessTrips.length > 0 ? Math.max(...businessTrips.map(trip => trip.id)) + 1 : 1,
+            employee: "当前用户", // 实际应用中应从用户会话获取
+            destination,
+            purpose,
+            startDate,
+            endDate,
+            budget: budget ? parseFloat(budget) : 0,
+            description,
+            status: "pending",
+            createdAt: new Date().toISOString().split('T')[0]
+        };
+
+        // 添加到数据
+        businessTrips.push(newRequest);
+
+        // 保存到本地存储
+        localStorage.setItem('businessTrips', JSON.stringify(businessTrips));
+
+        // 更新UI
+        updateDashboard();
+        renderRequestsTable();
+        renderRecordsTable();
+        renderRecentRequests();
+
+        // 关闭模态框并重置表单
+        requestModal.classList.remove('active');
+        requestForm.reset();
+
+        // 显示成功消息
+        alert('出差请求提交成功！');
+    }
+
+    // 查看请求详情
+    function viewRequestDetails(id) {
+        const trip = businessTrips.find(t => t.id === id);
+        if (!trip) return;
+
+        const detailContent = document.getElementById('detail-content');
+
+        // 根据状态确定显示文本
+        let statusText = '';
+        switch (trip.status) {
+            case 'pending':
+                statusText = '待审批';
+                break;
+            case 'approved':
+                statusText = '已批准';
+                break;
+            case 'rejected':
+                statusText = '已拒绝';
+                break;
+            case 'completed':
+                statusText = '已完成';
+                break;
+        }
+
+        detailContent.innerHTML = `
+                <div class="form-group">
+                    <label>申请人</label>
+                    <p>${trip.employee}</p>
+                </div>
+                <div class="form-group">
+                    <label>目的地</label>
+                    <p>${trip.destination}</p>
+                </div>
+                <div class="form-group">
+                    <label>出差目的</label>
+                    <p>${trip.purpose}</p>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>开始日期</label>
+                        <p>${formatDate(trip.startDate)}</p>
+                    </div>
+                    <div class="form-group">
+                        <label>结束日期</label>
+                        <p>${formatDate(trip.endDate)}</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>预算</label>
+                    <p>${trip.budget ? `¥${trip.budget.toFixed(2)}` : '未设置'}</p>
+                </div>
+                <div class="form-group">
+                    <label>详细说明</label>
+                    <p>${trip.description || '无'}</p>
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <p>${statusText}</p>
+                </div>
+                <div class="form-group">
+                    <label>提交时间</label>
+                    <p>${formatDate(trip.createdAt)}</p>
+                </div>
+            `;
+
+        detailModal.classList.add('active');
+    }
+
+    // 取消请求
+    function cancelRequest(id) {
+        if (confirm('确定要取消这个出差请求吗？')) {
+            // 从数据中移除
+            businessTrips = businessTrips.filter(trip => trip.id !== id);
+
+            // 保存到本地存储
+            localStorage.setItem('businessTrips', JSON.stringify(businessTrips));
+
+            // 更新UI
+            updateDashboard();
+            renderRequestsTable();
+            renderRecordsTable();
+            renderRecentRequests();
+
+            alert('出差请求已取消！');
+        }
+    }
+
+    // 格式化日期
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    }
+</script>
+</body>
+</html>

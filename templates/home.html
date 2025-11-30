@@ -23,6 +23,7 @@
 <body>
     <h1>考勤管理系统</h1>
     <nav>
+        <a href="{{ url_for('travel.index') }}" class="nav-link">出差统计</a>
         <a href="{{ url_for('class.index') }}" class="nav-link">学生课表</a>
         <a href="{{ url_for('config.index') }}" class="nav-link">考勤配置</a>
         <a href="{{ url_for('attendance.index') }}" class="nav-link">考勤统计</a>
