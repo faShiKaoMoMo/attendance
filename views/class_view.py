@@ -44,7 +44,7 @@ def handle_class_data():
             new_data = request.get_json()
 
             content_str = json.dumps(new_data.get("content", {}), ensure_ascii=False)
-            start_date = new_data.get("start_date")  # 例如 "2025/09/01"
+            start_date = new_data.get("start_date")
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             conn = sqlite3.connect(DB_FILE)

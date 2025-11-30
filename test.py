@@ -62,7 +62,7 @@ cursor.execute("""
     VALUES (?, ?, ?, ?)
 """, (
     data,
-    "2025/09/01",          # 你的日期格式
+    "2025-09-01",          # 你的日期格式
     datetime.now().strftime("%Y-%m-%d"),
     datetime.now().strftime("%Y-%m-%d")
 ))
