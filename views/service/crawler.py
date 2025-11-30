@@ -2,6 +2,7 @@ import json
 import sqlite3
 import time
 import traceback
+import platform
 
 from datetime import datetime
 from selenium.webdriver.chrome.service import Service
@@ -42,8 +43,10 @@ def token(conn, cursor, _id, req_data):
     chrome_options.add_argument('--disable-dev-shm-usage')
 
     # 创建一个 WebDriver 实例
-    driver = webdriver.Chrome(service=Service('chromedriver.exe'), options=chrome_options)
-    # driver = webdriver.Chrome(options=chrome_options)
+    if platform.system() == 'Windows':
+        driver = webdriver.Chrome(service=Service('chromedriver.exe'), options=chrome_options)
+    else:
+        driver = webdriver.Chrome(options=chrome_options)
 
     try:
         cursor.execute("""
