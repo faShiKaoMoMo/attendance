@@ -2,31 +2,344 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>欢迎来到考勤系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统首页 - 考勤管理系统</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-        h1 { color: #333; }
-        .nav-link {
-            display: inline-block;
-            margin: 10px;
-            padding: 15px 30px;
-            font-size: 18px;
-            text-decoration: none;
-            color: white;
-            background-color: #007bff;
-            border-radius: 5px;
-            transition: background-color 0.3s;
+        /* --- 核心变量 --- */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #27ae60;
+            --warning-color: #f39c12; /* 新增一个颜色用于装饰 */
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --text-gray: #6c757d;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --hover-shadow: 0 8px 25px rgba(52, 152, 219, 0.2);
+            --transition: all 0.3s ease;
         }
-        .nav-link:hover { background-color: #0056b3; }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            /* 背景色保留，Canvas会叠加在上面 */
+            background-color: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* 为z-index上下文做准备 */
+            z-index: 1; /* 确保内容在画布之上 */
+        }
+
+        /* --- 新增：动态背景画布样式 --- */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* 放在最底层，不会挡住点击 */
+            pointer-events: none; /* 让鼠标事件穿透画布 */
+        }
+
+        /* --- 头部区域 --- */
+        .header-section {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .header-section h1 {
+            font-size: 36px;
+            color: var(--dark-color);
+            margin: 0 0 10px 0;
+            font-weight: 700;
+        }
+
+        .header-section p {
+            font-size: 18px;
+            color: var(--text-gray);
+            margin: 0;
+            font-weight: 300;
+        }
+
+        /* --- 导航卡片网格 --- */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            width: 100%;
+            max-width: 1500px;
+            padding: 0 20px;
+            animation: fadeInUp 0.6s ease-out 0.2s backwards;
+        }
+
+        /* --- 单个卡片样式 --- */
+        .nav-card {
+            background-color: rgba(255, 255, 255, 0.95); /* 稍微增加一点透明度，让背景球隐约可见 */
+            border-radius: 16px;
+            padding: 40px 25px;
+            text-decoration: none;
+            color: var(--dark-color);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.02);
+            min-width: 0;
+            backdrop-filter: blur(5px); /* 毛玻璃特效，增加高级感 */
+        }
+
+        .nav-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--hover-shadow);
+            border-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .nav-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            opacity: 0.8;
+            transition: var(--transition);
+        }
+
+        .nav-card:hover::before { height: 8px; opacity: 1; }
+
+        .icon-box {
+            width: 70px;
+            height: 70px;
+            background-color: #eef7fc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+
+        .nav-card:hover .icon-box {
+            background-color: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .icon-box svg {
+            width: 35px;
+            height: 35px;
+            fill: var(--primary-color);
+            transition: var(--transition);
+        }
+
+        .nav-card:hover .icon-box svg { fill: white; }
+
+        .nav-card h2 {
+            font-size: 20px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+
+        .nav-card p {
+            font-size: 13px;
+            color: var(--text-gray);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .action-text {
+            margin-top: 25px;
+            font-size: 14px;
+            color: var(--primary-color);
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: var(--transition);
+        }
+
+        .nav-card:hover .action-text { opacity: 1; transform: translateY(0); }
+
+        /* --- 动画 --- */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 响应式适配 --- */
+        @media (max-width: 1100px) {
+            .nav-grid {
+                grid-template-columns: repeat(2, 1fr);
+                max-width: 800px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .nav-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-card {
+                flex-direction: row;
+                text-align: left;
+                align-items: center;
+                padding: 25px;
+            }
+            .icon-box { margin-bottom: 0; margin-right: 20px; flex-shrink: 0;}
+            .action-text { display: none; }
+        }
     </style>
 </head>
 <body>
-    <h1>考勤管理系统</h1>
-    <nav>
-        <a href="{{ url_for('travel.index') }}" class="nav-link">出差统计</a>
-        <a href="{{ url_for('class.index') }}" class="nav-link">学生课表</a>
-        <a href="{{ url_for('config.index') }}" class="nav-link">考勤配置</a>
-        <a href="{{ url_for('attendance.index') }}" class="nav-link">考勤统计</a>
+
+    <!-- 背景画布 -->
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="header-section">
+        <h1>考勤管理系统</h1>
+        <p>高效 · 便捷 · 智能的一站式管理平台</p>
+    </div>
+
+    <nav class="nav-grid">
+        <a href="{{ url_for('class.index') }}" class="nav-card">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5v-5z"/></svg>
+            </div>
+            <div>
+                <h2>学生课表</h2>
+                <p>管理排课计划与每日安排。</p>
+                <div class="action-text">进入管理 →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('config.index') }}" class="nav-card">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.11.2-.06.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.11-.22.06-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            </div>
+            <div>
+                <h2>考勤配置</h2>
+                <p>设置实验室与人员参数。</p>
+                <div class="action-text">进入配置 →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('travel.index') }}" class="nav-card">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24"><path d="M2.5 19h19v2h-19zm19.57-9.36c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 1.82 3.16.77 1.33 16.02-4.3c.8-.21 1.28-1.05 1.07-1.85z"/></svg>
+            </div>
+            <div>
+                <h2>出差管理</h2>
+                <p>申请与管理出差行程。</p>
+                <div class="action-text">管理行程 →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('attendance.index') }}" class="nav-card">
+            <div class="icon-box">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+            </div>
+            <div>
+                <h2>考勤统计</h2>
+                <p>生成出勤报告与数据。</p>
+                <div class="action-text">开始统计 →</div>
+            </div>
+        </a>
+
     </nav>
+
+    <!-- 背景特效脚本 -->
+    <script>
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        // 设置画布大小
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 球体类
+        class Ball {
+            constructor() {
+                // 半径 30 ~ 80
+                this.radius = Math.random() * 50 + 30;
+
+                // 初始位置
+                this.x = Math.random() * (width - this.radius * 2) + this.radius;
+                this.y = Math.random() * (height - this.radius * 2) + this.radius;
+
+                // 速度逻辑：保持之前的轻快感
+                // (Math.random() * 1.5 + 0.8) 保证最小速度
+                this.vx = (Math.random() * 0.75 + 0.5) * (Math.random() > 0.5 ? 1 : -1);
+                this.vy = (Math.random() * 0.75 + 0.5) * (Math.random() > 0.5 ? 1 : -1);
+
+                // --- 完全随机颜色生成 ---
+                const r = Math.floor(Math.random() * 256); // 0-255 红
+                const g = Math.floor(Math.random() * 256); // 0-255 绿
+                const b = Math.floor(Math.random() * 256); // 0-255 蓝
+                const a = 0.25; // 固定透明度，太深了会挡住文字
+
+                this.color = `rgba(${r}, ${g}, ${b}, ${a})`;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            update() {
+                // 碰壁反弹
+                if (this.x + this.radius > width || this.x - this.radius < 0) {
+                    this.vx = -this.vx;
+                }
+                if (this.y + this.radius > height || this.y - this.radius < 0) {
+                    this.vy = -this.vy;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                this.draw();
+            }
+        }
+
+        // 初始化球体
+        const balls = [];
+        // 这里改成了 10 个球
+        for (let i = 0; i < 10; i++) {
+            balls.push(new Ball());
+        }
+
+        // 动画循环
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            balls.forEach(ball => ball.update());
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
 </body>
 </html>

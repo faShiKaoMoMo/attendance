@@ -5,73 +5,100 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考勤统计</title>
     <style>
+        /* --- 核心变量 (与课表管理风格保持一致) --- */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --border-color: #dee2e6;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: Arial, "Helvetica Neue", "Microsoft YaHei", sans-serif;
-            margin: 40px;
-            text-align: center;
-            color: #555;
-            background-color: #f8f9fa;
-        }
-
-        h1 {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background-color: #f5f7fa;
             color: #333;
-            margin-bottom: 30px;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .form-container {
-            max-width: 520px;
-            margin: 0 auto;
-            padding: 30px;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            text-align: left;
+        /* --- 主容器卡片 --- */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 20px;
         }
 
-        .form-group {
-            margin-bottom: 50px;
-            position: relative;
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
         }
+
+        h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px; }
+        .subtitle { margin-top: 8px; opacity: 0.9; font-size: 16px; font-weight: 400; }
+
+        .form-content {
+            padding: 30px 40px;
+        }
+
+        /* --- 表单组样式 --- */
+        .form-group { margin-bottom: 25px; position: relative; }
 
         .form-group label {
             display: block;
-            font-weight: bold;
+            font-weight: 600;
             margin-bottom: 8px;
-            color: #333;
+            color: var(--dark-color);
+            font-size: 14px;
         }
 
-        .form-group input {
+        /* --- 输入框通用样式 --- */
+        input[type="text"],
+        input[type="date"],
+        input[type="number"] {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        input[type="date"] {
-            text-align: left;
-        }
-
-        /* --- 自定义选择框样式 --- */
-        .custom-select-container {
-            position: relative;
-        }
-
-        #account-selection-display {
-            cursor: pointer;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 15px;
+            color: #495057;
+            transition: var(--transition);
             background-color: #fff;
         }
 
-        .custom-select-container::after {
-            content: '▼';
-            font-size: 12px;
-            color: #888;
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+        }
+
+        /* --- 自定义下拉框 --- */
+        .custom-select-container { position: relative; }
+
+        #account-selection-display {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px top 50%;
+            background-size: 10px auto;
         }
 
         .options-list-container {
@@ -79,247 +106,231 @@
             position: absolute;
             width: 100%;
             background-color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            z-index: 10;
-            margin-top: 4px;
-            max-height: 200px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 100;
+            margin-top: 5px;
+            max-height: 250px;
             overflow-y: auto;
-            padding: 5px 0; /* 增加一点内边距 */
+            animation: fadeIn 0.2s ease;
         }
 
-        /* 修改：直接为选项label设置样式 */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
         .account-option {
-            display: block;
             padding: 10px 15px;
             cursor: pointer;
-            font-weight: normal;
-            margin-bottom: 0;
             color: #333;
+            border-bottom: 1px solid #f1f3f5;
+            transition: background 0.2s;
         }
+        .account-option:last-child { border-bottom: none; }
+        .account-option:hover { background-color: #f0f7ff; color: var(--primary-color); }
 
-        .account-option:hover {
-            background-color: #f1f1f1;
-        }
-        /* --- 自定义选择框样式结束 --- */
-
+        /* --- 日期选择区域 --- */
         .date-range-container {
             display: flex;
             gap: 15px;
             align-items: flex-end;
         }
 
-        .date-input-group {
+        .date-inputs-wrapper {
+            display: flex;
+            gap: 15px;
             flex: 1;
-            min-width: 0;
         }
+
+        .date-input-group { flex: 1; }
 
         .date-shortcuts {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 2px; /* 对齐微调 */
         }
 
         .shortcut-btn {
-            padding: 5px 12px;
-            font-size: 14px;
-            color: #007bff;
-            background-color: #fff;
-            border: 1px solid #007bff;
-            border-radius: 5px;
+            padding: 8px 12px;
+            font-size: 13px;
+            color: var(--primary-color);
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            border-radius: 6px;
             cursor: pointer;
+            transition: var(--transition);
             white-space: nowrap;
-            transition: all 0.2s ease;
         }
 
         .shortcut-btn:hover {
-            background-color: #e7f3ff;
-            color: #0056b3;
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
         }
 
+        /* --- 提交按钮 --- */
         .submit-btn {
             width: 100%;
-            padding: 12px;
-            font-size: 1.1em;
-            font-weight: bold;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
             color: #fff;
-            background-color: #007bff;
+            background-color: var(--primary-color);
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: var(--transition);
+            margin-top: 10px;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
         }
 
         .submit-btn:hover {
-            background-color: #0056b3;
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
         }
 
         .submit-btn:disabled {
-            background-color: #5a9ed8;
+            background-color: #95a5a6;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
-        a {
+        /* --- 底部链接 --- */
+        .back-link {
             display: inline-block;
-            margin-top: 20px;
             text-decoration: none;
-            color: #007bff;
-            font-weight: bold;
+            color: #6c757d;
+            font-size: 14px;
+            transition: var(--transition);
         }
+        .back-link:hover { color: var(--primary-color); }
 
-        a:hover {
-            text-decoration: underline;
-        }
-
-        /* --- 模态框样式 --- */
+        /* --- 模态框样式 (复刻风格) --- */
         .modal-overlay {
-            display: none; /* 初始隐藏 */
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
+            justify-content: center; align-items: center; z-index: 1000;
+            backdrop-filter: blur(3px);
         }
 
         .modal-content {
-            background-color: #fefefe;
-            padding: 30px 40px;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
+            background-color: white; padding: 30px 40px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); text-align: center;
+            width: 90%; max-width: 380px;
+            animation: modal-appear 0.3s ease-out;
         }
 
-        #modal-title {
-            margin-top: 0;
-            color: #333;
+        @keyframes modal-appear {
+            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+        #modal-title { font-size: 20px; color: var(--dark-color); margin-top: 0; }
+        #modal-message { color: #666; margin-bottom: 25px; font-size: 16px; }
 
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #007bff;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color);
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin: 0 auto 25px auto;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .modal-btn { /* 通用按钮样式 */
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-            margin-left: auto;
-            margin-right: auto;
-            margin-top: 20px;
-            padding: 10px 25px;
-            font-size: 16px;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #modal-close-btn {
-            background-color: #28a745;
-        }
-
-        #modal-close-btn.error {
-            background-color: #dc3545;
-        }
-
-        #captcha-submit-btn {
-            background-color: #007bff; /* 验证码提交按钮用主题色 */
-            margin-top: 15px;
-        }
-
-        #captcha-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 16px;
+        .modal-btn {
+            width: 100%; padding: 10px; font-size: 15px; border-radius: 6px;
+            border: none; cursor: pointer; color: white; transition: var(--transition);
             margin-top: 10px;
+        }
+
+        #modal-close-btn { background-color: #6c757d; }
+        #modal-close-btn:hover { background-color: #5a6268; }
+        #modal-close-btn.error { background-color: var(--danger-color); }
+
+        #captcha-submit-btn { background-color: var(--primary-color); }
+        #captcha-submit-btn:hover { background-color: var(--secondary-color); }
+
+        #captcha-input { margin-bottom: 15px; text-align: center; letter-spacing: 2px; }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .date-range-container { flex-direction: column; align-items: stretch; }
+            .date-inputs-wrapper { flex-direction: row; }
+            .date-shortcuts { justify-content: flex-end; margin-top: 5px; }
+            .form-content { padding: 20px; }
         }
     </style>
 </head>
 <body>
 
-<h1>考勤统计</h1>
+<div class="container">
+    <header>
+        <h1>考勤统计</h1>
+        <div class="subtitle">选择账户与日期范围以生成报告</div>
+    </header>
 
-<div class="form-container">
-    <form id="attendance-form" onsubmit="startProcess(event)">
-        <div class="form-group">
-            <label for="account-selection-display">账户</label>
-            <div class="custom-select-container">
-                <input type="text" id="account-selection-display" readonly placeholder="请选择账户" required>
-                <div id="account-options-list" class="options-list-container">
-                    <!-- 账户选项将由JS动态填充 -->
+    <div class="form-content">
+        <form id="attendance-form" onsubmit="startProcess(event)">
+            <!-- 账户选择 -->
+            <div class="form-group">
+                <label for="account-selection-display">选择账户</label>
+                <div class="custom-select-container">
+                    <input type="text" id="account-selection-display" readonly placeholder="请点击选择..." required>
+                    <div id="account-options-list" class="options-list-container">
+                        <!-- JS 填充选项 -->
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="form-group">
-            <div class="date-range-container">
-                <div class="date-input-group">
-                    <label for="start-date">开始时间</label>
-                    <input type="date" id="start-date" name="start-date" required>
-                </div>
-                <div class="date-input-group">
-                    <label for="end-date">结束时间</label>
-                    <input type="date" id="end-date" name="end-date" required>
-                </div>
-                <div class="date-shortcuts">
-                    <button type="button" id="btn-by-week" class="shortcut-btn">按周</button>
-                    <button type="button" id="btn-by-month" class="shortcut-btn">按月</button>
+            <!-- 日期选择 -->
+            <div class="form-group">
+                <div class="date-range-container">
+                    <div class="date-inputs-wrapper">
+                        <div class="date-input-group">
+                            <label for="start-date">开始日期</label>
+                            <input type="date" id="start-date" name="start-date" required>
+                        </div>
+                        <div class="date-input-group">
+                            <label for="end-date">结束日期</label>
+                            <input type="date" id="end-date" name="end-date" required>
+                        </div>
+                    </div>
+                    <div class="date-shortcuts">
+                        <button type="button" id="btn-by-week" class="shortcut-btn">本周</button>
+                        <button type="button" id="btn-by-month" class="shortcut-btn">上月</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="form-group">
-            <label for="attendance-days">出勤天数 (工作日)</label>
-            <input type="number" id="attendance-days" name="attendance-days">
-        </div>
+            <!-- 出勤天数 -->
+            <div class="form-group">
+                <label for="attendance-days">预计出勤天数 (工作日)</label>
+                <input type="number" id="attendance-days" name="attendance-days" placeholder="自动计算...">
+            </div>
 
-        <button type="submit" class="submit-btn">开始统计</button>
-    </form>
-</div>
-
-<a href="{{ url_for('home') }}">返回首页</a>
-
-<!-- 状态显示模态框 (结构保持不变) -->
-<div id="status-modal-overlay" class="modal-overlay">
-    <div class="modal-content">
-        <h2 id="modal-title">正在处理</h2>
-        <p id="modal-message">统计任务已创建，正在后台统计...</p>
-        <div id="modal-spinner" class="spinner"></div>
-
-        <div id="captcha-container" style="display: none;">
-            <input type="text" id="captcha-input" placeholder="请输入验证码">
-            <button id="captcha-submit-btn" class="modal-btn">提交</button>
-        </div>
-
-        <button id="modal-close-btn" class="modal-btn">关闭</button>
+            <button type="submit" class="submit-btn">开始统计任务</button>
+        </form>
     </div>
 </div>
 
+<a href="{{ url_for('home') }}" class="back-link">← 返回首页</a>
+
+<!-- 状态显示模态框 -->
+<div id="status-modal-overlay" class="modal-overlay">
+    <div class="modal-content">
+        <h2 id="modal-title">正在处理</h2>
+        <div id="modal-spinner" class="spinner"></div>
+        <p id="modal-message">统计任务已创建，正在后台统计...</p>
+
+        <!-- 验证码容器 -->
+        <div id="captcha-container" style="display: none;">
+            <input type="text" id="captcha-input" placeholder="输入短信验证码">
+            <button id="captcha-submit-btn" class="modal-btn">提交验证</button>
+        </div>
+
+        <button id="modal-close-btn" class="modal-btn" style="display:none;">关闭</button>
+    </div>
+</div>
 
 <script>
     // --- 页面元素引用 ---
@@ -351,7 +362,7 @@
     // --- 初始化和事件绑定 ---
     document.addEventListener('DOMContentLoaded', function () {
         fetchAccounts();
-        setWeeklyDateRange();
+        setWeeklyDateRange(); // 默认选本周
         document.getElementById('btn-by-week').addEventListener('click', setWeeklyDateRange);
         document.getElementById('btn-by-month').addEventListener('click', setMonthlyDateRange);
         modalCloseBtn.addEventListener('click', closeModal);
@@ -365,53 +376,44 @@
                 return response.json();
             })
             .then(data => {
-                // 确保账户对象包含 id, name, mobile, password
                 allAccounts = data.filter(item => item && item.id && item.name && item.mobile && item.password);
                 populateAccountList();
             })
             .catch(error => {
                 console.error('无法获取账户列表:', error);
-                accountSelectionDisplay.placeholder = '加载账户失败,请刷新';
-                alert(`无法从接口加载账户列表: ${error.message}`);
+                accountSelectionDisplay.placeholder = '加载失败，请刷新页面';
+                accountSelectionDisplay.style.borderColor = '#e74c3c';
             });
     }
 
-    // 修改：不再创建 radio 按钮
     function populateAccountList() {
         accountOptionsContainer.innerHTML = '';
         if (allAccounts.length > 0) {
             allAccounts.forEach(account => {
-                // 创建一个 div 或其他元素作为选项
                 const option = document.createElement('div');
-                option.className = 'account-option'; // 应用样式
-                option.textContent = account.name; // 显示账户名
-
-                // 将整个账户对象存储在 dataset 中
+                option.className = 'account-option';
+                option.textContent = account.name;
                 option.dataset.accountInfo = JSON.stringify(account);
-
                 accountOptionsContainer.appendChild(option);
             });
         } else {
-            accountOptionsContainer.innerHTML = '<span style="display: block; padding: 10px 15px; color: #999;">没有可用的账户</span>';
+            accountOptionsContainer.innerHTML = '<div class="account-option" style="cursor:default; color:#999;">暂无可用账户</div>';
         }
     }
 
-    // --- 自定义账户选择框的交互 ---
+    // --- 下拉框交互 ---
     accountSelectionDisplay.addEventListener('click', (event) => {
         event.stopPropagation();
-        accountOptionsContainer.style.display = accountOptionsContainer.style.display === 'block' ? 'none' : 'block';
+        const isVisible = accountOptionsContainer.style.display === 'block';
+        accountOptionsContainer.style.display = isVisible ? 'none' : 'block';
     });
 
-    // 修改：监听点击事件而不是 change 事件
     accountOptionsContainer.addEventListener('click', (event) => {
-        // 确保点击的是一个选项，而不是容器本身
         const targetOption = event.target.closest('.account-option');
-        if (targetOption) {
-            // 从 dataset 中解析并存储完整的账户对象
+        if (targetOption && targetOption.dataset.accountInfo) {
             selectedAccount = JSON.parse(targetOption.dataset.accountInfo);
-            // 更新显示框的文本
             accountSelectionDisplay.value = selectedAccount.name;
-            // 自动关闭列表
+            accountSelectionDisplay.style.borderColor = '#27ae60'; // 选中后边框变绿提示
             accountOptionsContainer.style.display = 'none';
         }
     });
@@ -420,22 +422,23 @@
         accountOptionsContainer.style.display = 'none';
     });
 
-    accountOptionsContainer.addEventListener('click', (event) => {
-        event.stopPropagation();
-    });
-
-    // --- 日期和工作日计算 (保持不变) ---
+    // --- 日期和工作日计算 ---
     startDateInput.addEventListener('change', calculateWeekdays);
     endDateInput.addEventListener('change', calculateWeekdays);
 
     function setWeeklyDateRange() {
         const today = new Date();
         const tempDate = new Date();
-        const daysToSubtract = today.getDay() + 1;
-        tempDate.setDate(today.getDate() - daysToSubtract);
-        const endDate = new Date(tempDate);
-        tempDate.setDate(endDate.getDate() - 6);
+        const dayOfWeek = today.getDay();
+        // 假设周一为第一天. getDay() 0是周日.
+        const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+        tempDate.setDate(today.getDate() - daysToSubtract); // 本周一
         const startDate = new Date(tempDate);
+
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6); // 本周日
+
         startDateInput.value = formatDateForInput(startDate);
         endDateInput.value = formatDateForInput(endDate);
         calculateWeekdays();
@@ -443,8 +446,11 @@
 
     function setMonthlyDateRange() {
         const today = new Date();
+        // 上个月最后一天
         const prevMonthEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        // 上个月第一天
         const prevMonthStartDate = new Date(prevMonthEndDate.getFullYear(), prevMonthEndDate.getMonth(), 1);
+
         startDateInput.value = formatDateForInput(prevMonthStartDate);
         endDateInput.value = formatDateForInput(prevMonthEndDate);
         calculateWeekdays();
@@ -480,8 +486,9 @@
     // --- 核心逻辑：模态框、轮询、表单提交 ---
 
     function showLoadingModal() {
-        modalTitle.textContent = '正在处理';
-        modalMessage.textContent = '正在后台统计...';
+        modalTitle.textContent = '任务进行中';
+        modalTitle.style.color = '#333';
+        modalMessage.textContent = '正在后台拉取数据，请稍候...';
         modalSpinner.style.display = 'block';
         modalCloseBtn.style.display = 'none';
         captchaContainer.style.display = 'none';
@@ -490,8 +497,8 @@
     }
 
     function showCaptchaModal(taskId) {
-        modalTitle.textContent = '请输入验证码以继续';
-        modalMessage.textContent = '限时2分钟';
+        modalTitle.textContent = '安全验证';
+        modalMessage.textContent = '系统需要您输入短信验证码以继续';
         modalSpinner.style.display = 'none';
         modalCloseBtn.style.display = 'none';
         captchaContainer.style.display = 'block';
@@ -506,11 +513,11 @@
     async function submitCaptcha(taskId) {
         const captchaValue = captchaInput.value.trim();
         if (!captchaValue) {
-            alert('验证码不能为空！');
+            alert('请输入验证码！');
             return;
         }
 
-        modalMessage.textContent = '正在提交验证码...';
+        modalMessage.textContent = '验证中...';
         captchaContainer.style.display = 'none';
         modalSpinner.style.display = 'block';
 
@@ -522,19 +529,15 @@
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: '无法解析错误信息' }));
-                throw new Error(`验证失败: ${errorData.error || response.statusText}`);
+                const errorData = await response.json().catch(() => ({ error: '验证失败' }));
+                throw new Error(errorData.error || response.statusText);
             }
-
-            // 验证码提交成功后，切换回加载状态，等待下一次轮询来更新最终状态
+            // 提交成功，继续等待轮询结果
             showLoadingModal();
-            // 不再需要在这里手动调用 startPolling，因为它已经在后台运行了
-
         } catch (error) {
-            modalTitle.textContent = '提交失败';
-            modalMessage.textContent = `${error.message}，请重试。`;
+            modalTitle.textContent = '验证失败';
+            modalMessage.textContent = `${error.message}，请重新输入。`;
             modalSpinner.style.display = 'none';
-            // 让用户可以重新输入验证码
             captchaContainer.style.display = 'block';
             captchaInput.focus();
         }
@@ -543,85 +546,71 @@
     function closeModal() {
         modalOverlay.style.display = 'none';
         submitBtn.disabled = false;
-        submitBtn.textContent = '开始统计';
+        submitBtn.textContent = '开始统计任务';
         if (pollingInterval) {
             clearInterval(pollingInterval);
             pollingInterval = null;
         }
     }
 
-    // --- 修改开始：startPolling 函数已更新 ---
     function startPolling(taskId) {
-        // 确保不会启动多个轮询
         if (pollingInterval) clearInterval(pollingInterval);
 
         pollingInterval = setInterval(async () => {
             try {
                 const response = await fetch(`/attendance/statistics/${taskId}`);
-                if (!response.ok) {
-                    throw new Error(`服务器错误: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Status: ${response.status}`);
                 const data = await response.json();
 
-                // 根据状态更新UI
-                if (data.status === 1) {
-                    // 状态1：成功
+                if (data.status === 1) { // 成功
                     clearInterval(pollingInterval);
                     pollingInterval = null;
                     modalTitle.textContent = '统计完成';
-                    modalMessage.textContent = '请查收邮件';
+                    modalTitle.style.color = '#27ae60';
+                    modalMessage.textContent = '统计报告已发送至您的邮箱，请查收。';
                     modalSpinner.style.display = 'none';
                     modalCloseBtn.style.display = 'block';
                     modalCloseBtn.classList.remove('error');
+                    modalCloseBtn.textContent = '好的';
 
-                } else if (data.status === 2) {
-                    // 状态2：需要验证码
-                    // 仅当这是一个新的验证码请求时才显示模态框
+                } else if (data.status === 2) { // 需要验证码
                     if (data.update_date !== lastCaptchaTimestamp) {
                         lastCaptchaTimestamp = data.update_date;
                         showCaptchaModal(taskId);
                     }
-                    // **重要：不停止轮询**，以便可以检测到验证码超时等状态变化
-
-                } else if (data.status === 0) {
-                    // 状态0：执行中
-                    modalMessage.textContent = data.message || '正在后台统计...';
-
-                } else {
-                    // 其他所有状态 (如 -1, -2 等) 均视为失败
+                } else if (data.status === 0) { // 进行中
+                    modalMessage.textContent = data.message || '正在努力加载数据...';
+                } else { // 失败
                     clearInterval(pollingInterval);
                     pollingInterval = null;
                     modalTitle.textContent = '任务失败';
-                    modalMessage.textContent = `发生错误: ${data.message || '未知错误'}`;
+                    modalTitle.style.color = '#e74c3c';
+                    modalMessage.textContent = data.message || '发生未知错误';
                     modalSpinner.style.display = 'none';
                     modalCloseBtn.style.display = 'block';
                     modalCloseBtn.classList.add('error');
+                    modalCloseBtn.textContent = '关闭';
                 }
 
             } catch (error) {
                 clearInterval(pollingInterval);
-                pollingInterval = null;
-                modalTitle.textContent = '轮询错误';
-                modalMessage.textContent = `无法获取任务状态: ${error.message}`;
+                modalTitle.textContent = '网络错误';
+                modalMessage.textContent = `无法连接服务器: ${error.message}`;
                 modalSpinner.style.display = 'none';
                 modalCloseBtn.style.display = 'block';
-                modalCloseBtn.classList.add('error');
             }
-        }, 2000); // 轮询间隔建议设为2-3秒，避免过于频繁
+        }, 2000);
     }
-    // --- 修改结束 ---
 
     async function startProcess(event) {
         event.preventDefault();
-
-        // 重置上次的验证码时间戳
         lastCaptchaTimestamp = null;
 
-        const startDateValue = document.getElementById('start-date').value;
-        const endDateValue = document.getElementById('end-date').value;
+        const startDateValue = startDateInput.value;
+        const endDateValue = endDateInput.value;
 
         if (!selectedAccount || !startDateValue || !endDateValue) {
-            alert('请选择一个账户并设置有效的起止日期！');
+            alert('请完整填写账户和日期信息！');
             return;
         }
 
@@ -629,7 +618,7 @@
             account_id: selectedAccount.id,
             start_date: startDateValue.replace(/-/g, ''),
             end_date: endDateValue.replace(/-/g, ''),
-            attendance_days: Number(document.getElementById('attendance-days').value)
+            attendance_days: Number(attendanceDaysInput.value)
         };
 
         submitBtn.disabled = true;
@@ -644,22 +633,21 @@
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({error: '无法解析错误信息'}));
-                throw new Error(`服务器错误: ${response.status} - ${errorData.error || '未知错误'}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Error ${response.status}`);
             }
 
             const result = await response.json();
-
             if (result.id) {
-                // 任务创建成功，开始轮询状态
                 startPolling(result.id);
             } else {
-                throw new Error('服务器未返回任务ID');
+                throw new Error('未获取到任务ID');
             }
 
         } catch (error) {
             modalTitle.textContent = '提交失败';
-            modalMessage.textContent = `请求无法发送: ${error.message}`;
+            modalTitle.style.color = '#e74c3c';
+            modalMessage.textContent = error.message;
             modalSpinner.style.display = 'none';
             modalCloseBtn.style.display = 'block';
             modalCloseBtn.classList.add('error');
