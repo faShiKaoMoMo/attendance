@@ -200,12 +200,26 @@
                 transform: rotate(360deg);
             }
         }
+
+        .date-input-group {
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        input[type="date"] {
+            text-align: left;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
 
 <h1>学生课表</h1>
 <div class="controls">
+    <div class="date-input-group">
+        <label for="start-date">开始时间</label>
+        <input type="date" id="start-date" name="start-date">
+    </div>
     <button id="save-btn">保存课表</button>
     <!-- statusSpan 不再用于显示保存状态，但可以保留用于显示加载失败等信息 -->
     <span id="status"></span>
@@ -243,6 +257,7 @@
         const modal = document.getElementById('modal');
         const modalBody = document.getElementById('modal-body');
         const modalButtons = document.getElementById('modal-buttons');
+        const startDatePicker = document.getElementById('start-date');
         const weekTypes = {
             'all': '全部',
             'odd': '单周',
@@ -275,22 +290,32 @@
             modal.style.display = 'flex';
         }
 
+        function formatDateForInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         /**
          * 从后端加载数据并渲染表格
          */
-async function loadSchedule() {
-    try {
-        const response = await fetch('/class/api');
-        if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
+        async function loadSchedule() {
+            try {
+                const response = await fetch('/class/api');
+                if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
 
-        const data = await response.json();
-        const tableData = data.content || {};
-        renderTable(tableData);
-    } catch (error) {
-        statusSpan.textContent = `加载失败: ${error.message}`;
-        statusSpan.style.color = 'red';
-    }
-}
+                const data = await response.json();
+                // 渲染开始日期
+                startDatePicker.value = formatDateForInput(new Date(data.start_date));
+                const tableData = data.content || {};
+                renderTable(tableData);
+            } catch (error) {
+                statusSpan.textContent = `加载失败: ${error.message}`;
+                statusSpan.style.color = 'red';
+            }
+        }
+
         /**
          * 渲染整个表格
          * @param {object} data - 从API获取的课表数据
@@ -378,8 +403,11 @@ async function loadSchedule() {
             const newData = {};
             const rows = scheduleBody.querySelectorAll('tr');
 
+            // 开始日期
+            newData['start_date'] = startDatePicker.value
+            newData['content'] = {}
             for (let dayIndex = 0; dayIndex < 5; dayIndex++) {
-                newData[dayIndex.toString()] = [];
+                newData['content'][dayIndex.toString()] = [];
             }
 
             rows.forEach((row, timeIndex) => {
@@ -396,7 +424,7 @@ async function loadSchedule() {
                         }
                     });
 
-                    newData[dayIndex].push({
+                    newData['content'][dayIndex].push({
                         time: timeText,
                         names: names
                     });
