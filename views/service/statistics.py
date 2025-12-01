@@ -68,35 +68,37 @@ def get_week_type(current_date, ref_date):
     return 'odd' if week_difference % 2 == 0 else 'even'
 
 
-def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester_start_input):
-    """根据原始课表数据、日期范围和单双周规则，生成最终的 class_schedule 字典。"""
+def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester_start_input, semester_end_input):
+    """
+    根据原始课表数据、日期范围和单双周规则，生成最终的 class_schedule 字典。
+    新增 semester_end_input 用于判断学期是否结束。
+    """
     class_schedule = {}
     start_date = datetime.strptime(start_date_str, "%Y%m%d")
     end_date = datetime.strptime(end_date_str, "%Y%m%d")
 
-    # --- 处理开学基准时间 ---
-    # 默认为 2025-09-01，防止数据库字段为空或格式错误
-    ref_date = datetime(2025, 9, 1)
-
+    # --- 处理开学基准时间 (Start) ---
+    ref_date = datetime(2025, 9, 1)  # 默认值
     if semester_start_input:
-        if isinstance(semester_start_input, str):
-            try:
-                if '-' in semester_start_input:
-                    ref_date = datetime.strptime(semester_start_input, "%Y-%m-%d")
-                else:
-                    ref_date = datetime.strptime(semester_start_input, "%Y%m%d")
-            except ValueError:
-                print(f"日期格式解析错误: {semester_start_input}，使用默认值")
-        elif isinstance(semester_start_input, datetime):
-            ref_date = semester_start_input
-        elif hasattr(semester_start_input, 'year'):  # 处理 datetime.date 对象
-            ref_date = datetime(semester_start_input.year, semester_start_input.month, semester_start_input.day)
+        ref_date = parse_flexible_date(semester_start_input, ref_date)
+
+    # --- 处理学期结束时间 (End) ---
+    # 默认为很久以后，确保如果不传结束时间，默认课程一直有效
+    ref_end_date = datetime(2099, 12, 31)
+    if semester_end_input:
+        ref_end_date = parse_flexible_date(semester_end_input, ref_end_date)
 
     current_date = start_date
     while current_date <= end_date:
+        # 【关键修改】如果当前统计日期 已经超过了 学期结束日期，则跳过生成课程
+        # 注意：这里比较的是 datetime 对象
+        if current_date > ref_end_date:
+            current_date += timedelta(days=1)
+            continue
+
         weekday = current_date.weekday()
 
-        if weekday > 4:
+        if weekday > 4:  # 周六周日跳过
             current_date += timedelta(days=1)
             continue
 
@@ -124,6 +126,23 @@ def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester
         current_date += timedelta(days=1)
 
     return class_schedule
+
+
+# 抽取了一个辅助函数来处理日期的各种格式，让主代码更干净
+def parse_flexible_date(date_input, default_val):
+    if isinstance(date_input, str):
+        try:
+            if '-' in date_input:
+                return datetime.strptime(date_input, "%Y-%m-%d")
+            else:
+                return datetime.strptime(date_input, "%Y%m%d")
+        except ValueError:
+            return default_val
+    elif isinstance(date_input, datetime):
+        return date_input
+    elif hasattr(date_input, 'year'):  # datetime.date 对象
+        return datetime(date_input.year, date_input.month, date_input.day)
+    return default_val
 
 
 ####################################################################################################
@@ -277,20 +296,22 @@ def fetch(conn, cursor, token, req_data):
 
     # 1. 获取课表和开学时间
     # 【修改】：增加查询 start_date
-    cursor.execute('SELECT content, start_date FROM `class` ORDER BY id DESC LIMIT 1')
+    cursor.execute('SELECT content, start_date, end_date FROM `class` ORDER BY id DESC LIMIT 1')
     row = cursor.fetchone()
 
     raw_schedule = {}
     semester_start = None
+    semester_end = None
 
     if row:
         # 防止内容为空
         raw_schedule = json.loads(row[0]) if row[0] else {}
-        # 读取开学日期 (假设是 row[1])
+        # 读取开学日期
         semester_start = row[1]
+        semester_end = row[2]
 
-    # 【修改】：传入 semester_start
-    class_info = generate_class_schedule(start_date, end_date, raw_schedule, semester_start)
+    # 传入 semester_start
+    class_info = generate_class_schedule(start_date, end_date, raw_schedule, semester_start, semester_end)
 
     # 2. 获取实验室配置 (排除名单)
     cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC')
