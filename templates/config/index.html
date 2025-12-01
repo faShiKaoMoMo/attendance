@@ -5,249 +5,145 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考勤配置</title>
     <style>
-        /* --- 核心变量与重置 (参考风格) --- */
+        /* --- 核心变量 --- */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2980b9;
             --success-color: #27ae60;
             --danger-color: #e74c3c;
-            --warning-color: #f39c12;
-            --light-color: #f8f9fa;
-            --dark-color: #343a40;
             --border-color: #dee2e6;
-            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
+            --light-bg: #f8f9fa;
         }
 
         * { box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
+            margin: 0; padding: 20px;
+            background-color: #f5f7fa; color: #333;
         }
 
-        /* --- 主容器布局 --- */
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            min-height: 80vh;
-            display: flex;
-            flex-direction: column;
+            max-width: 1600px; margin: 0 auto;
+            background-color: white; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden; min-height: 80vh;
+            display: flex; flex-direction: column;
         }
 
         header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 25px 30px;
-            text-align: center;
+            color: white; padding: 20px 30px;
         }
-
-        h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px; }
+        h1 { margin: 0; font-size: 24px; }
         .subtitle { margin-top: 8px; opacity: 0.9; font-size: 16px; }
 
-        /* --- Tab 导航栏 --- */
-        .tabs-nav {
-            display: flex;
-            background-color: white;
-            border-bottom: 1px solid var(--border-color);
-            padding: 0 30px;
-        }
-
+        /* --- 导航栏 --- */
+        .tabs-nav { display: flex; border-bottom: 1px solid var(--border-color); padding: 0 30px; }
         .tab-btn {
-            padding: 15px 25px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            color: #6c757d;
+            padding: 15px 25px; border: none; background: none;
+            font-size: 16px; cursor: pointer; color: #6c757d;
             border-bottom: 3px solid transparent;
-            transition: var(--transition);
         }
-
         .tab-btn:hover { color: var(--primary-color); background-color: #f8f9fa; }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
 
-        .tab-btn.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-            font-weight: 600;
-        }
+        .tab-content-wrapper { padding: 30px; flex-grow: 1; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; animation: fadeIn 0.4s ease-in-out; }
 
-        /* --- 内容区域 --- */
-        .tab-content-wrapper {
-            padding: 30px;
-            flex-grow: 1;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .tab-pane {
-            display: none;
-            animation: fadeIn 0.4s ease-in-out;
-        }
-        .tab-pane.active { display: block; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* --- 顶部控制栏 (新增按钮) --- */
-        .controls {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 20px;
-        }
-
+        .controls { display: flex; justify-content: flex-end; margin-bottom: 20px; }
         .add-btn {
-            padding: 10px 20px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            padding: 10px 20px; background-color: var(--primary-color); color: white;
+            border: none; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
             box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
         }
-
-        .add-btn:hover {
-            background-color: var(--secondary-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
-        }
-
+        .add-btn:hover { background-color: var(--secondary-color); transform: translateY(-2px); }
         .add-btn::before { content: "+"; font-size: 18px; font-weight: bold; }
 
-        /* --- 表格样式 (复刻 Schedule 风格) --- */
-        .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); }
+        /* =========================================
+           核心修复区：表格整体化样式
+           ========================================= */
+        .table-container { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
 
         .styled-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: collapse; /* 合并边框 */
             background-color: #fff;
-            min-width: 800px; /* 防止过窄 */
+            table-layout: fixed; /* 固定列宽 */
         }
 
         .styled-table th {
-            background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
-            padding: 15px 12px;
-            text-align: center;
-            font-weight: 600;
-            color: var(--dark-color);
+            background-color: var(--light-bg);
+            padding: 12px 15px;
+            text-align: center; font-weight: 600;
             border-bottom: 2px solid var(--border-color);
-            white-space: nowrap;
+            color: #343a40;
         }
 
-        .styled-table td {
+        /* 边框加在行(tr)上 */
+        .styled-table tr {
             border-bottom: 1px solid var(--border-color);
-            padding: 12px 15px;
-            vertical-align: middle;
             transition: background-color 0.2s;
         }
+        .styled-table tr:last-child { border-bottom: none; }
+        .styled-table tr:hover { background-color: #f8fafc; }
 
-        .styled-table tr:hover td { background-color: #f8fafc; }
-        .styled-table tr:last-child td { border-bottom: none; }
+        /* 单元格样式 */
+        .styled-table td {
+            border: none;
+            padding: 10px 15px;
+            vertical-align: middle;
+        }
 
-        /* --- 输入框样式 --- */
+        /* 输入框高度锁定 36px */
         .styled-table input {
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ced4da;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: var(--transition);
-            color: #495057;
+            height: 36px; /* 固定高度 */
+            padding: 0 10px;
+            border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 14px; color: #495057;
+            display: block;
+            line-height: 34px;
+            transition: all 0.3s ease;
         }
+        .styled-table input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15); }
 
-        .styled-table input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
-        }
-
-        /* 必填项提示效果 */
-        .styled-table input:required:invalid { border-color: #ffc107; }
-
-        /* --- 操作按钮组 --- */
-        .action-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
+        /* 按钮高度锁定 36px，与输入框齐平 */
+        .action-buttons { display: flex; justify-content: center; align-items: center; gap: 8px; height: 100%; }
 
         .row-btn {
-            padding: 6px 14px;
+            height: 36px; /* 与输入框等高 */
+            padding: 0 15px;
             font-size: 13px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            color: white;
-            transition: var(--transition);
-            white-space: nowrap;
+            border: none; border-radius: 4px; cursor: pointer; color: white;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease;
         }
-
         .save-row-btn { background-color: var(--success-color); }
         .save-row-btn:hover { background-color: #219653; transform: translateY(-1px); }
-
         .remove-row-btn { background-color: var(--danger-color); }
         .remove-row-btn:hover { background-color: #c0392b; transform: translateY(-1px); }
 
-        /* --- 弹窗样式 (复刻) --- */
+        /* --- 弹窗 --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); display: none;
-            justify-content: center; align-items: center; z-index: 1000;
+            background: rgba(0,0,0,0.5); display: none;
+            justify-content: center; align-items: center; z-index: 999;
             backdrop-filter: blur(2px);
         }
-
-        .modal-content {
-            background-color: white; padding: 30px 40px; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); text-align: center;
-            min-width: 320px; max-width: 90%;
-            animation: modal-appear 0.3s ease-out;
-        }
-
-        @keyframes modal-appear {
-            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .modal-content p { margin: 0 0 25px 0; font-size: 18px; color: #333; }
-
-        .modal-buttons button {
-            padding: 10px 25px; font-size: 16px; cursor: pointer; border: none;
-            border-radius: 6px; background-color: var(--primary-color); color: white;
-            transition: var(--transition);
-        }
-        .modal-buttons button:hover { background-color: var(--secondary-color); transform: translateY(-2px); }
-
-        .spinner {
-            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color);
-            border-radius: 50%; width: 40px; height: 40px;
-            animation: spin 1s linear infinite; margin: 0 auto 20px auto;
-        }
+        .modal-content { background: white; padding: 30px 40px; border-radius: 12px; text-align: center; min-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .modal-buttons button { padding: 10px 25px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; font-size: 16px; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- 响应式 --- */
+        /* 响应式 */
         @media (max-width: 768px) {
-            header { padding: 20px 15px; }
-            h1 { font-size: 24px; }
-            .tabs-nav { padding: 0 10px; }
-            .tab-btn { padding: 12px 15px; font-size: 14px; }
-            .tab-content-wrapper { padding: 15px; }
-            .styled-table th, .styled-table td { padding: 10px; }
-            .row-btn { padding: 6px 10px; }
+            .styled-table { min-width: 800px; } /* 保持横向滚动 */
+            .table-container { overflow-x: auto; }
         }
     </style>
 </head>
@@ -259,18 +155,15 @@
         <div class="subtitle">管理实验室与账号信息</div>
     </header>
 
-    <!-- Tab 导航 -->
     <div class="tabs-nav">
         <button class="tab-btn active" onclick="switchTab('lab-config')">实验室配置</button>
         <button class="tab-btn" onclick="switchTab('account-config')">账号配置</button>
     </div>
 
     <div class="tab-content-wrapper">
-        <!-- ==================== 实验室配置内容 ==================== -->
+        <!-- 实验室配置 -->
         <div id="lab-config" class="tab-pane active">
-            <div class="controls">
-                <button id="add-config-btn" class="add-btn">新增实验室</button>
-            </div>
+            <div class="controls"><button id="add-config-btn" class="add-btn">新增实验室</button></div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
@@ -286,11 +179,9 @@
             </div>
         </div>
 
-        <!-- ==================== 账号配置内容 ==================== -->
+        <!-- 账号配置 -->
         <div id="account-config" class="tab-pane">
-            <div class="controls">
-                <button id="add-account-btn" class="add-btn">新增账号</button>
-            </div>
+            <div class="controls"><button id="add-account-btn" class="add-btn">新增账号</button></div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
@@ -309,7 +200,6 @@
     </div>
 </div>
 
-<!-- 弹窗 -->
 <div id="modal" class="modal-overlay">
     <div class="modal-content">
         <div id="modal-body"></div>
@@ -325,7 +215,6 @@
 
         document.getElementById(tabId).classList.add('active');
 
-        // 高亮当前按钮
         const btns = document.querySelectorAll('.tab-btn');
         btns.forEach(btn => {
             if(btn.getAttribute('onclick').includes(tabId)) {
@@ -371,11 +260,7 @@
 
         async function loadAllData() {
             try {
-                // 模拟数据 (如果没有真实后端，取消注释下面这行来测试效果)
-                // const mockConfig = [{id: 1, name: '翔安', lab: 'Lab A', excluded_name: ['张三']}];
-                // const mockAccount = [{id: 1, name: '王五', mobile: '13800000000', email: 'test@test.com'}];
-                // renderConfigList(mockConfig); renderAccountList(mockAccount); return;
-
+                // 恢复了真实的 API 调用
                 const [configResponse, accountResponse] = await Promise.all([
                     fetch('/config/api'),
                     fetch('/config/account')
@@ -388,7 +273,11 @@
                 renderConfigList(configData);
                 renderAccountList(accounts);
             } catch (error) {
+                // 如果后端挂了，这里会报错。为了方便调试，你可以保留一个 render 空数据的操作
                 showModal('error', `数据加载失败: ${error.message}`);
+                // 渲染空数据防止页面空白
+                if (configListBody.children.length === 0) renderConfigList([]);
+                if (accountListBody.children.length === 0) renderAccountList([]);
             }
         }
 
@@ -397,7 +286,7 @@
         function renderConfigList(data) {
             configListBody.innerHTML = '';
             if (!data || data.length === 0) {
-                configListBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #999;">暂无数据，请新增配置</td></tr>';
+                configListBody.appendChild(createConfigRow());
                 return;
             }
             data.forEach(item => configListBody.appendChild(createConfigRow(item)));
@@ -407,13 +296,17 @@
             const tr = document.createElement('tr');
             tr.dataset.id = config.id || '';
             const excludedStr = (config.excluded_name || []).join(', ');
+
+            // 恢复了你原本的逻辑：只有没有ID（新增行）才显示“移除”按钮
+            const removeBtnHtml = !config.id ? '<button class="row-btn remove-row-btn">移除</button>' : '';
+
             tr.innerHTML = `
                 <td><input type="text" class="config-name" value="${config.name || ''}" placeholder="例如: 翔安"></td>
                 <td><input type="text" class="config-lab" value="${config.lab || ''}" placeholder="得力e+实验室名"></td>
                 <td><input type="text" class="config-excluded" value="${excludedStr}" placeholder="排除人员 (逗号隔开)"></td>
                 <td class="action-buttons">
                     <button class="row-btn save-row-btn">保存</button>
-                    ${!config.id ? '<button class="row-btn remove-row-btn">移除</button>' : ''}
+                    ${removeBtnHtml}
                 </td>`;
             return tr;
         }
@@ -426,12 +319,14 @@
 
             if (!name || !lab) return showModal('error', '“配置名称”和“实验室”为必填项！');
 
-            const excluded_name = excludedStr ? excludedStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+            // 稍微优化了一下分隔符，支持中英文逗号
+            const excluded_name = excludedStr ? excludedStr.split(/,|，/).map(s => s.trim()).filter(Boolean) : [];
             const payload = {id, name, lab, excluded_name};
             if (!payload.id) delete payload.id;
 
             showModal('loading', '正在保存配置...');
             try {
+                // 恢复了真实的 API POST 请求
                 const response = await fetch('/config/api', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -451,7 +346,7 @@
         function renderAccountList(data) {
             accountListBody.innerHTML = '';
             if (!data || data.length === 0) {
-                accountListBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #999;">暂无数据，请新增账号</td></tr>';
+                accountListBody.appendChild(createAccountRow());
                 return;
             }
             data.forEach(item => accountListBody.appendChild(createAccountRow(item)));
@@ -460,14 +355,19 @@
         function createAccountRow(account = {}) {
             const tr = document.createElement('tr');
             tr.dataset.id = account.id || '';
+
+            // 恢复了逻辑：新增行才显示移除
+            const removeBtnHtml = !account.id ? '<button class="row-btn remove-row-btn">移除</button>' : '';
+
             tr.innerHTML = `
                 <td><input type="text" class="account-name" value="${account.name || ''}" placeholder="姓名"></td>
                 <td><input type="text" class="account-mobile" value="${account.mobile || ''}" placeholder="手机号"></td>
                 <td><input type="text" class="account-password" value="${account.password || ''}" placeholder="密码 (选填)"></td>
-                <td><input type="email" class="account-email" value="${account.email || ''}" placeholder="通知邮箱"></td>
+                <!-- 保持了修复：使用 type="text" 防止多邮箱报错 -->
+                <td><input type="text" class="account-email" value="${account.email || ''}" placeholder="通知邮箱 (逗号分隔)"></td>
                 <td class="action-buttons">
                     <button class="row-btn save-row-btn">保存</button>
-                    ${!account.id ? '<button class="row-btn remove-row-btn">移除</button>' : ''}
+                    ${removeBtnHtml}
                 </td>
             `;
             return tr;
@@ -489,6 +389,7 @@
 
             showModal('loading', '正在保存账号...');
             try {
+                // 恢复了真实的 API POST 请求
                 const response = await fetch('/config/account', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},

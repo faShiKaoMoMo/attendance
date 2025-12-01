@@ -30,8 +30,9 @@ def handle_class_data():
                     "id": row[0],
                     "content": json.loads(row[1]) if row[1] else None,
                     "start_date": row[2],
-                    "create_date": row[3],
-                    "update_date": row[4]
+                    "end_date": row[3],
+                    "create_date": row[4],
+                    "update_date": row[5]
                 }
                 return jsonify(data)
             else:
@@ -45,16 +46,17 @@ def handle_class_data():
 
             content_str = json.dumps(new_data.get("content", {}), ensure_ascii=False)
             start_date = new_data.get("start_date")
+            end_date = new_data.get("end_date")
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
             cursor.execute(
                 '''
-                INSERT INTO class (content, start_date, create_date, update_date)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO class (content, start_date, end_date, create_date, update_date)
+                VALUES (?, ?, ?, ?, ?)
                 ''',
-                (content_str, start_date, now, now)
+                (content_str, start_date, end_date, now, now)
             )
             conn.commit()
             conn.close()
