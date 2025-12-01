@@ -160,14 +160,13 @@ def handle_get_data_by_page():
         conn.close()
 
         data_list = [dict(row) for row in rows]
-        data = []
-        data.append({
+        data = {
             "pageNo": pageNo,
             "pageSize": pageSize,
             "total": total,
             "pages": total / pageSize,
             "list": data_list
-        })
+        }
         return jsonify(data)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
