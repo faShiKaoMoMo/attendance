@@ -1,12 +1,10 @@
 import json
 import sys
 import traceback
+from collections import defaultdict
 from datetime import datetime, timedelta
 
-import openpyxl
 import requests
-from openpyxl.styles import Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
 
 
 def format_datetime(date_str):
@@ -181,7 +179,7 @@ def fetchdata(start_date, end_date, token, org_id, member_id):
 
 ####################################################################################################
 
-def statistic_person(name, record_week, total_work_days, class_schedule):
+def statistic_person(name, record_week, total_work_days, class_schedule, travel_dates):
     # --- 配置常量 (分钟) ---
     # AM: 7:30(450) - 9:30(570) 必须在此区间签到
     AM_WINDOW_START = 450
@@ -194,7 +192,6 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
     PM_SPLIT = 1110  # 18:30 分界线
 
     # Eve: 18:30(1110) - 23:30(1410)
-    # 晚上签到无限制，但必须在 23:30 前签退
     EVE_CHECKOUT_LIMIT = 1410
 
     # 1. 初始化结果
@@ -204,8 +201,36 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
 
     # 遍历每一天
     for record_day in record_week:
-        checkin_date = record_day['checkin_date']
-        day_str = format_datetime(checkin_date)
+        checkin_date = record_day['checkin_date']  # 格式通常为 "20240901"
+        day_str = format_datetime(checkin_date)  # 格式为 "09-01"
+
+        # --- 【新增】判断是否为出差日 ---
+        # 将 checkin_date (如 "20240901") 转为 "2024-09-01" 以匹配 travel_dates 集合
+        try:
+            current_date_obj = datetime.strptime(str(checkin_date), "%Y%m%d")
+            check_date_str = current_date_obj.strftime("%Y-%m-%d")
+        except:
+            check_date_str = ""
+
+        if check_date_str in travel_dates:
+            # 如果是出差日：
+            # 1. 当天标记为(出差)
+            display_times = {
+                'am_in': '(出差)', 'am_out': '(出差)',
+                'pm_in': '(出差)', 'pm_out': '(出差)',
+                'eve_in': '(出差)', 'eve_out': '(出差)'
+            }
+            result_person[day_str] = display_times
+
+            # 2. 考勤时间为0 (不累加到 total_hours)
+
+            # 3. 算上有效出勤
+            total_valid_days += 1
+
+            # 4. 跳过后续常规打卡计算
+            continue
+
+        # --- 以下为原有逻辑，保持不变 ---
 
         # 获取物理打卡时间
         raw_checkin_records = record_day.get('month_day_data', [])
@@ -262,14 +287,7 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
                 eve_points.append(p_end)
 
         # --- 2. 核心计算逻辑 ---
-
         def calculate_session(points, start_min_limit, start_max_limit, end_hard_limit=None):
-            """
-            逻辑更新：
-            1. 优先检查物理打卡是否在窗口内（有效）。
-            2. 如果物理打卡迟到或缺失，但当天此时段有课，则使用课程开始时间作为签到点（自动修正）。
-            3. 如果既没有效打卡也没课，才算无效。
-            """
             if not points:
                 return 0, '-', '-'
 
@@ -290,7 +308,7 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
                     if not (start_min_limit <= first_phys[0] <= start_max_limit):
                         is_phys_valid = False
 
-                # 如果物理打卡有效，优先采用 (为了记录更多时长，或者真实的早到)
+                # 如果物理打卡有效，优先采用
                 if is_phys_valid:
                     valid_start_time = first_phys[0]
                     start_source = 'phys'
@@ -303,12 +321,9 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
 
             # --- C. 最终校验起点 ---
             if valid_start_time is None:
-                # 既没在规定时间打卡，也没课 -> 无效
                 return 0, '-', '-'
 
             # --- D. 确定结束时间 ---
-            # 结束时间取该时段所有记录（物理+课程）里最晚的那个
-            # 这样保证：如果下课后还工作了，算到物理签退；如果早退了但课表显示到很晚，算到课表结束
             all_sorted = sorted(points, key=lambda x: x[0])
             end_time = all_sorted[-1][0]
             end_source = all_sorted[-1][1]
@@ -317,12 +332,10 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
             if end_hard_limit is not None and end_time > end_hard_limit:
                 return 0, '-', '-'
 
-            # 格式化显示字符串
             start_str = minutes_to_time_str(valid_start_time) + ("(课)" if start_source == 'class' else "")
 
-            # --- F. 校验单次打卡 (只有起点没有终点，或起点终点重合) ---
+            # --- F. 校验单次打卡 ---
             if valid_start_time == end_time:
-                # 只有签到，展示签到时间，签退缺失
                 return 0, start_str, '-'
 
             # --- G. 正常计算 ---
@@ -332,14 +345,8 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
             return duration, start_str, end_str
 
         # --- 3. 分别计算三个时段 ---
-
-        # 上午：窗口 7:30-9:30
         eff_am, am_in, am_out = calculate_session(am_points, AM_WINDOW_START, AM_WINDOW_END)
-
-        # 下午：窗口 13:30-14:30
         eff_pm, pm_in, pm_out = calculate_session(pm_points, PM_WINDOW_START, PM_WINDOW_END)
-
-        # 晚上：起点无限制(None)，终点限制 23:30 (EVE_CHECKOUT_LIMIT)
         eff_eve, eve_in, eve_out = calculate_session(eve_points, None, None, end_hard_limit=EVE_CHECKOUT_LIMIT)
 
         # 汇总
@@ -354,18 +361,19 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
         }
         result_person[day_str] = display_times
 
-        # 有效天数 (保持原逻辑)
+        # 有效天数
         if eff_am > 0 and eff_pm > 0:
             total_valid_days += 1
 
-    # --- 4. 最终统计 ---
+    # --- 4. 最终统计 (此处只包含“实际出勤”) ---
     total_hours = round(total_hours, 2)
+    # 注意：日均考勤时长稍后会在 fetch 中根据（实际+出差）重新计算，这里先给个基础值或保持原样
     avg_daily_hours = 0
     if total_work_days > 0:
         avg_daily_hours = round(total_hours / total_work_days, 2)
 
     result_person['实际出勤时长'] = total_hours
-    result_person['日均考勤时长'] = avg_daily_hours
+    result_person['日均考勤时长'] = avg_daily_hours  # 这是一个临时值，fetch 中会被覆盖
     result_person['有效出勤天数'] = total_valid_days
 
     return result_person
@@ -373,7 +381,10 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
 
 ####################################################################################################
 
-def statistic(infos, start_date, end_date, class_schedule, workday_count, exclude_person=None):
+def statistic(infos, start_date, end_date, class_schedule, workday_count, travel_map, exclude_person=None):
+    """
+    增加了 travel_map 参数
+    """
     result = []
 
     for person_info in infos:
@@ -381,8 +392,18 @@ def statistic(infos, start_date, end_date, class_schedule, workday_count, exclud
         if exclude_person and name in exclude_person:
             continue
         try:
+            # 获取该人的出差日期集合
+            person_travel_dates = travel_map.get(name, set())
+
             result.append(
-                statistic_person(name, person_info['month_days'], workday_count, class_schedule))
+                statistic_person(
+                    name,
+                    person_info['month_days'],
+                    workday_count,
+                    class_schedule,
+                    person_travel_dates  # 传入出差日期
+                )
+            )
         except Exception as e:
             traceback.print_exc()
             print(f"处理 '{person_info['member_name']}' 数据时出错: {e}")
@@ -397,25 +418,54 @@ def fetch(conn, cursor, token, req_data):
     attendance_days = req_data['attendance_days']  # 应出勤天数
 
     # 1. 获取课表和开学时间
-    # 【修改】：增加查询 start_date
     cursor.execute('SELECT content, start_date, end_date FROM `class` ORDER BY id DESC LIMIT 1')
-    row = cursor.fetchone()
-
+    rows = cursor.fetchone()
     raw_schedule = {}
     semester_start = None
     semester_end = None
-
-    if row:
-        # 防止内容为空
-        raw_schedule = json.loads(row[0]) if row[0] else {}
-        # 读取开学日期
-        semester_start = row[1]
-        semester_end = row[2]
-
-    # 传入 semester_start
+    if rows:
+        raw_schedule = json.loads(rows[0]) if rows[0] else {}
+        semester_start = rows[1]
+        semester_end = rows[2]
     class_info = generate_class_schedule(start_date, end_date, raw_schedule, semester_start, semester_end)
 
-    # 2. 获取实验室配置 (排除名单)
+    # 2. 获取出差记录
+    start_date_format = datetime.strptime(start_date, "%Y%m%d").date()
+    end_date_format = datetime.strptime(end_date, "%Y%m%d").date()
+    cursor.execute("""
+        SELECT user_name, start_date, end_date, avg_working_hours
+        FROM "travel"
+        WHERE status = 1 
+          AND start_date <= ? 
+          AND end_date >= ?
+    """, (end_date_format, start_date_format))
+    rows = cursor.fetchall()
+
+    travel_map = defaultdict(set)
+    working_hour = {}  # 存储每个人的出差补录总时长
+
+    for user_name, start_str, end_str, avg_working_hours in rows:
+        # 字符串转日期
+        trip_start = datetime.strptime(start_str, '%Y-%m-%d').date()
+        trip_end = datetime.strptime(end_str, '%Y-%m-%d').date()
+        # 实际统计开始 = max(出差开始, 查询开始)
+        calc_start = max(trip_start, start_date_format)
+        # 实际统计结束 = min(出差结束, 查询结束)
+        calc_end = min(trip_end, end_date_format)
+
+        # 计算该段出差在查询范围内的天数
+        days_in_range = 0
+        current_date = calc_start
+        while current_date <= calc_end:
+            travel_map[user_name].add(current_date.strftime("%Y-%m-%d"))
+            current_date += timedelta(days=1)
+            days_in_range += 1
+
+        # 累加出差补录时长 (天数 * 日均工时)
+        current_total = working_hour.get(user_name, 0)
+        working_hour[user_name] = current_total + (avg_working_hours * days_in_range)
+
+    # 3. 获取实验室配置 (排除名单)
     cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC')
     rows = cursor.fetchall()
     lab_info = {}
@@ -428,7 +478,7 @@ def fetch(conn, cursor, token, req_data):
                 excluded_list = [name.strip() for name in row["excluded_name"].split(',') if name.strip()]
         lab_info[row["lab"]] = excluded_list
 
-    # 3. 统计所有数据
+    # 4. 统计所有数据
     data_list = []
     for toke in token:
         lab = toke['name']
@@ -437,20 +487,48 @@ def fetch(conn, cursor, token, req_data):
         # 获取原始打卡数据
         raw_data = fetchdata(start_date, end_date, toke['Authorization'], toke['org_id'], toke['member_id'])
 
-        # 处理单人统计
-        processed_data = statistic(raw_data, start_date, end_date,
-                                   class_schedule=class_info,
-                                   workday_count=attendance_days,
-                                   exclude_person=exclude_person)
+        # 处理单人统计 (传入 travel_map)
+        processed_data = statistic(
+            raw_data,
+            start_date,
+            end_date,
+            class_schedule=class_info,
+            workday_count=attendance_days,
+            travel_map=travel_map,  # 传入出差日期映射
+            exclude_person=exclude_person
+        )
         data_list.extend(processed_data)
 
-    # 排序与排名
-
-    # 根据 '实际出勤时长' 进行降序排序
-    data_list.sort(key=lambda x: x['实际出勤时长'], reverse=True)
-
-    # 添加排名并调整字段顺序
+    # 5. 后处理：计算最终时长、排序
     final_list = []
+
+    # 这里我们不需要立即创建 final_list，先在 data_list 上补充字段并排序
+    for person_data in data_list:
+        name = person_data['姓名']
+
+        # 获取基础数据
+        actual_hours = person_data.get('实际出勤时长', 0)
+
+        # 获取出差补录时长
+        travel_add_hours = working_hour.get(name, 0)
+
+        # 计算最终出勤时长
+        final_total_hours = actual_hours + travel_add_hours
+
+        # 重新计算日均考勤时长 (基于最终时长)
+        new_avg_daily = 0
+        if attendance_days > 0:
+            new_avg_daily = round(final_total_hours / attendance_days, 2)
+
+        # 更新/新增字段
+        person_data['出差补录时长'] = round(travel_add_hours, 2)
+        person_data['最终出勤时长'] = round(final_total_hours, 2)
+        person_data['日均考勤时长'] = new_avg_daily
+
+    # 根据 '最终出勤时长' 进行降序排序
+    data_list.sort(key=lambda x: x['最终出勤时长'], reverse=True)
+
+    # 添加排名并调整顺序
     for index, person_data in enumerate(data_list):
         ordered_data = {'排名': index + 1}
         ordered_data.update(person_data)

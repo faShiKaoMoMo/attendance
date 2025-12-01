@@ -34,21 +34,35 @@ def create_combined_workbook(data, start_date, end_date):
         dates.append(current_date.strftime("%m-%d"))
         current_date += timedelta(days=1)
 
-    # 左侧固定列 (包含“是否达标”)
-    static_headers = ["排名", "姓名", "实际出勤时长", "有效出勤天数", "日均出勤时长", "是否达标"]
+    # 左侧固定列 (包含新增的“出差补录时长”和“最终出勤时长”)
+    static_headers = [
+        "排名",
+        "姓名",
+        "最终出勤时长",
+        "有效出勤天数",
+        "实际出勤时长",
+        "出差补录时长",
+        "日均出勤时长",
+        "是否达标"
+    ]
     headers = static_headers + dates
 
     ws.append(headers)
 
     # --- 设置列宽 ---
-    ws.column_dimensions['A'].width = 6  # 排名
+    # 根据新增列调整宽度映射
+    ws.column_dimensions['A'].width = 6   # 排名
     ws.column_dimensions['B'].width = 12  # 姓名
-    ws.column_dimensions['C'].width = 15  # 总出勤
-    ws.column_dimensions['D'].width = 15  # 有效天数
-    ws.column_dimensions['E'].width = 15  # 日均时长
-    ws.column_dimensions['F'].width = 10  # 是否达标
+    ws.column_dimensions['C'].width = 15  # 实际出勤时长
+    ws.column_dimensions['D'].width = 15  # 出差补录时长 (新增)
+    ws.column_dimensions['E'].width = 15  # 最终出勤时长 (新增)
+    ws.column_dimensions['F'].width = 15  # 有效出勤天数
+    ws.column_dimensions['G'].width = 15  # 日均出勤时长
+    ws.column_dimensions['H'].width = 10  # 是否达标
 
+    # 动态日期列的宽度设置
     for i in range(len(dates)):
+        # 注意：这里基于 static_headers 的长度自动计算起始列，无需手动修改
         col_letter = get_column_letter(len(static_headers) + 1 + i)
         ws.column_dimensions[col_letter].width = 13
 
@@ -73,15 +87,19 @@ def create_combined_workbook(data, start_date, end_date):
     for person_index, person in enumerate(data):
         start_row_for_person = current_row
 
-        # 1. 计算是否达标 (日均 >= 8)
+        # 1. 获取数据
+        # 注意：data 中的 '日均考勤时长' 已经在上一步计算逻辑中更新为基于最终时长的均值
         avg_hours = person.get("日均考勤时长", 0)
         is_target_met = "是" if avg_hours >= 8 else "否"
 
+        # 构造左侧固定列数据，加入新增字段
         static_data = [
             person.get("排名", ""),
             person.get("姓名", ""),
-            person.get("实际出勤时长", 0),
+            person.get("最终出勤时长", 0),
             person.get("有效出勤天数", 0),
+            person.get("实际出勤时长", 0),
+            person.get("出差补录时长", 0),
             avg_hours,
             is_target_met
         ]
@@ -89,6 +107,7 @@ def create_combined_workbook(data, start_date, end_date):
         # 2. 写入左侧固定列并合并单元格
         for i, value in enumerate(static_data, start=1):
             ws.cell(row=current_row, column=i, value=value)
+            # 合并6行
             ws.merge_cells(start_row=current_row, start_column=i,
                            end_row=current_row + 5, end_column=i)
 
@@ -155,7 +174,7 @@ def excel(conn, cursor, data, req_data):
     account_id = req_data["account_id"]
 
     # 1. 生成唯一的 Excel 文件
-    # 此时传入的 data 已经是排序好并包含排名字段的了
+    # data 中已经包含了 "出差补录时长" 和 "最终出勤时长" 字段
     combined_wb = create_combined_workbook(data, start_date, end_date)
 
     # 2. 将 Excel 保存到内存
@@ -182,8 +201,6 @@ def excel(conn, cursor, data, req_data):
     email_body = (
         f"您好，\n\n"
         f"附件是 {start_date} 到 {end_date} 的考勤统计报表。\n"
-        f"数据已按实际出勤时长进行排名。\n\n"
-        f"（包含上课抵扣工时与物理打卡数据的合并统计）"
     )
 
     attachments_to_send = [
