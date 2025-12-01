@@ -40,11 +40,10 @@ def handle_request_count():
                 "count": row["cnt"]
             })
 
-        data = []
-        data.append({
+        data = {
             "total": ans,
             "item": item_list
-        })
+        }
 
         return jsonify(data)
     except Exception as e:
@@ -112,6 +111,7 @@ def handle_update_request():
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @travel_bp.route('/approval', methods=["POST"])
 def handle_approval_request():
