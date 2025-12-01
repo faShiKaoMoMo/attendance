@@ -12,7 +12,7 @@ leave_bp = Blueprint('leave', __name__, url_prefix='/leave')
 def index():
     """
     渲染出差统计主页面
-    它会去 templates/travel/ 文件夹下寻找 index.html 文件。
+    它会去 templates/leave/ 文件夹下寻找 index.html 文件。
     """
     return render_template('leave/index.html')
 
