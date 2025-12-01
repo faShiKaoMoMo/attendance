@@ -72,10 +72,12 @@ def handle_add_request():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (user_name, destination, reason, start_date, end_date,
                   status, description, now, now))
+
+        _id = cursor.lastrowid
         conn.commit()
         conn.close()
 
-        return jsonify({"success": True, "message": "出差记录新增成功"})
+        return jsonify({"success": True, "message": "出差记录新增成功", "id": _id})
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
