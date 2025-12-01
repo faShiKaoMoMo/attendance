@@ -12,6 +12,7 @@ CREATE TABLE "class" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT,
     start_date DATE,
+    end_date DATE,
     create_date TIMESTAMP,
     update_date TIMESTAMP
 );
@@ -58,58 +59,59 @@ data = """
 """
 
 cursor.execute("""
-    INSERT INTO class (content, start_date, create_date, update_date)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO class (content, start_date, end_date, create_date, update_date)
+    VALUES (?, ?, ?, ?, ?)
 """, (
     data,
-    "2025-09-01",  # 你的日期格式
+    "2025-09-01",
+    "2025-12-28",
     datetime.now().strftime("%Y-%m-%d"),
     datetime.now().strftime("%Y-%m-%d")
 ))
 
 #  出差表
-cursor.execute('DROP TABLE IF EXISTS "travel";')
-
-cursor.execute("""
-CREATE TABLE "travel" (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_name TEXT,
-    destination TEXT,
-    reason TEXT,
-    start_date DATE,
-    end_date DATE,
-    status INTEGER,
-    description TEXT,
-    create_date TIMESTAMP,
-    update_date TIMESTAMP
-);
-""")
-
-cursor.execute("CREATE INDEX IF NOT EXISTS idx_travel_start_date ON travel(start_date)")
-
-test_travel_data = [(
-    '张三', '北京', '商务会议', '2024-03-15', '2024-03-18', 1, '参加年度技术峰会，与合作伙伴洽谈业务合作事宜',
-    '2024-02-20 09:30:00', '2024-02-25T14:20:00'),
-    ('李四', '上海', '技术培训', '2024-03-22', '2024-03-25', 0, '参加AWS云计算架构师认证培训课程',
-     '2024-02-25 10:15:00', '2024-02-25T10:15:00'),
-    ('王五', '广州', '项目考察', '2024-04-01', '2024-04-05', 1, '考察新项目场地，与当地供应商会面洽谈合作细节',
-     '2024-02-18 16:45:00', '2024-02-22T11:30:00'),
-    ('赵六', '成都', '客户拜访', '2024-03-10', '2024-03-12', 2, '拜访重要客户，进行产品演示和需求调研',
-     '2024-02-15 13:20:00', '2024-02-28T09:15:00'),
-    ('钱七', '杭州', '行业展会', '2024-04-08', '2024-04-11', 0, '参加国际人工智能博览会，了解行业最新发展趋势',
-     '2024-02-28 08:50:00', '2024-02-28T08:50:00'),
-    ('孙八', '西安', '团队建设', '2024-03-28', '2024-03-31', 1, '组织部门团队建设活动，提升团队凝聚力',
-     '2024-02-22 11:10:00', '2024-02-26T16:40:00'),
-    ('周九', '深圳', '产品发布会', '2024-04-15', '2024-04-17', 0, '参加公司新产品发布会，协助现场技术支持',
-     '2024-02-27 14:25:00', '2024-02-27T14:25:00'),
-    ('吴十', '南京', '学术交流', '2024-03-05', '2024-03-08', 1, '参加全国计算机科学学术会议，发表研究成果',
-     '2024-02-16 15:30:00', '2024-02-24T10:05:00')
-]
-
-cursor.executemany("""
-    INSERT INTO travel (user_name, destination, reason, start_date, end_date, status, description, create_date, update_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-""", test_travel_data)
+# cursor.execute('DROP TABLE IF EXISTS "travel";')
+#
+# cursor.execute("""
+# CREATE TABLE "travel" (
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+#     user_name TEXT,
+#     destination TEXT,
+#     reason TEXT,
+#     start_date DATE,
+#     end_date DATE,
+#     status INTEGER,
+#     description TEXT,
+#     create_date TIMESTAMP,
+#     update_date TIMESTAMP
+# );
+# """)
+#
+# cursor.execute("CREATE INDEX IF NOT EXISTS idx_travel_start_date ON travel(start_date)")
+#
+# test_travel_data = [(
+#     '张三', '北京', '商务会议', '2024-03-15', '2024-03-18', 1, '参加年度技术峰会，与合作伙伴洽谈业务合作事宜',
+#     '2024-02-20 09:30:00', '2024-02-25T14:20:00'),
+#     ('李四', '上海', '技术培训', '2024-03-22', '2024-03-25', 0, '参加AWS云计算架构师认证培训课程',
+#      '2024-02-25 10:15:00', '2024-02-25T10:15:00'),
+#     ('王五', '广州', '项目考察', '2024-04-01', '2024-04-05', 1, '考察新项目场地，与当地供应商会面洽谈合作细节',
+#      '2024-02-18 16:45:00', '2024-02-22T11:30:00'),
+#     ('赵六', '成都', '客户拜访', '2024-03-10', '2024-03-12', 2, '拜访重要客户，进行产品演示和需求调研',
+#      '2024-02-15 13:20:00', '2024-02-28T09:15:00'),
+#     ('钱七', '杭州', '行业展会', '2024-04-08', '2024-04-11', 0, '参加国际人工智能博览会，了解行业最新发展趋势',
+#      '2024-02-28 08:50:00', '2024-02-28T08:50:00'),
+#     ('孙八', '西安', '团队建设', '2024-03-28', '2024-03-31', 1, '组织部门团队建设活动，提升团队凝聚力',
+#      '2024-02-22 11:10:00', '2024-02-26T16:40:00'),
+#     ('周九', '深圳', '产品发布会', '2024-04-15', '2024-04-17', 0, '参加公司新产品发布会，协助现场技术支持',
+#      '2024-02-27 14:25:00', '2024-02-27T14:25:00'),
+#     ('吴十', '南京', '学术交流', '2024-03-05', '2024-03-08', 1, '参加全国计算机科学学术会议，发表研究成果',
+#      '2024-02-16 15:30:00', '2024-02-24T10:05:00')
+# ]
+#
+# cursor.executemany("""
+#     INSERT INTO travel (user_name, destination, reason, start_date, end_date, status, description, create_date, update_date)
+#     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+# """, test_travel_data)
 
 # cursor.execute("PRAGMA table_info(attendance_token);")
 # print(cursor.fetchall())
