@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请假统计管理</title>
+    <style>
+        /* ==================== 核心风格 (从考勤配置页面复刻) ==================== */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --border-color: #dee2e6;
+            --light-bg: #f8f9fa;
+            --text-color: #333;
+            --gray-text: #6c757d;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 20px;
+            background-color: #f5f7fa; color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1600px; margin: 0 auto;
+            background-color: white; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden; min-height: 85vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white; padding: 20px 30px;
+            text-align: center;
+        }
+        h1 { margin: 0; font-size: 24px; }
+        .subtitle { margin-top: 8px; opacity: 0.9; font-size: 16px; }
+
+        /* --- 内容区域 --- */
+        .content-wrapper { padding: 30px; flex-grow: 1; display: flex; flex-direction: column; gap: 30px; }
+
+        /* --- 统计卡片 (原有Stats的样式升级) --- */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .stat-card {
+            background: white; border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 20px; text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .stat-card h3 { font-size: 32px; margin: 0 0 5px 0; color: var(--primary-color); }
+        .stat-card p { margin: 0; color: var(--gray-text); font-size: 14px; }
+
+        /* --- 控制栏 --- */
+        .controls { display: flex; justify-content: flex-end; align-items: center; }
+        .add-btn {
+            padding: 0 20px; height: 36px;
+            background-color: var(--primary-color); color: white;
+            border: none; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+        .add-btn:hover { background-color: var(--secondary-color); }
+        .add-btn::before { content: "+"; font-size: 18px; font-weight: bold; }
+
+        /* --- 表格样式 (复用 Styled Table) --- */
+        .table-container { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: white; }
+        .styled-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+        .styled-table th {
+            background-color: var(--light-bg);
+            padding: 12px 15px;
+            /* text-align: left;  <-- 删除或注释掉这一行 */
+            text-align: center; /* <-- 修改为 center */
+            font-weight: 600;
+            color: #343a40;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        /* 找到这一块 (约第97行) */
+        .styled-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            font-size: 14px;
+            color: #495057;
+            text-align: center; /* <-- 新增这一行 */
+        }
+        .styled-table tr:hover { background-color: #f8fafc; }
+
+        /* 状态标签 */
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .status-approved { background-color: #d1ecf1; color: #0c5460; }
+        .status-rejected { background-color: #f8d7da; color: #721c24; }
+
+        /* 操作按钮组 (高度36px) */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center; /* <-- 新增这一行，让按钮组在单元格内居中 */
+        }
+        .row-btn {
+            height: 32px; padding: 0 12px; font-size: 12px;
+            border: none; border-radius: 4px; cursor: pointer; color: white;
+            transition: opacity 0.2s;
+        }
+        .row-btn:hover { opacity: 0.9; }
+        .btn-view { background-color: #17a2b8; }
+        .btn-approve { background-color: var(--success-color); }
+        .btn-reject { background-color: var(--danger-color); }
+
+        /* --- 分页 (样式匹配) --- */
+        .pagination-container {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 20px; border-top: 1px solid var(--border-color);
+            background-color: #fff;
+        }
+        .pagination-info { font-size: 13px; color: var(--gray-text); }
+        .pagination-controls { display: flex; gap: 5px; align-items: center; }
+
+        .page-btn {
+            height: 32px; min-width: 32px; padding: 0 10px;
+            border: 1px solid var(--border-color); background: white;
+            border-radius: 4px; cursor: pointer; color: var(--text-color);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) { border-color: var(--primary-color); color: var(--primary-color); }
+        .page-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--light-bg); }
+
+        /* --- 模态框 (统一风格) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none;
+            justify-content: center; align-items: center; z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background: white; width: 90%; max-width: 600px;
+            border-radius: 12px; padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .modal-header h2 { margin: 0; font-size: 20px; color: var(--text-color); }
+        .close-modal-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #aaa; }
+
+        .form-row { display: flex; gap: 20px; margin-bottom: 15px; }
+        .form-group { flex: 1; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #555; }
+        .form-control {
+            width: 100%; height: 38px; padding: 0 12px;
+            border: 1px solid var(--border-color); border-radius: 4px;
+            font-size: 14px; transition: border 0.3s;
+        }
+        .form-control:focus { outline: none; border-color: var(--primary-color); }
+        textarea.form-control { height: 100px; padding: 10px; resize: vertical; }
+
+        .modal-footer { margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-cancel { padding: 8px 20px; border: 1px solid var(--border-color); background: white; border-radius: 4px; cursor: pointer; }
+        .btn-submit { padding: 8px 20px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; }
+
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary-color); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>请假管理</h1>
+        <div class="subtitle">请假申请审批与数据统计</div>
+    </header>
+
+    <div class="content-wrapper">
+        <!-- 1. 统计区域 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3 id="total-requests">0</h3>
+                <p>总请假请求</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pending-requests" style="color: var(--warning-color)">0</h3>
+                <p>待审批请求</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="approved-requests" style="color: var(--success-color)">0</h3>
+                <p>已批准请求</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="completed-trips" style="color: var(--danger-color)">0</h3>
+                <p>已驳回请求</p>
+            </div>
+        </div>
+
+        <!-- 2. 操作栏 -->
+        <div class="controls">
+            <button id="add-request-btn" class="add-btn">新增请假请求</button>
+        </div>
+
+        <!-- 3. 表格区域 -->
+        <div class="table-container">
+            <table class="styled-table" id="recent-requests">
+                <thead>
+                <tr>
+                    <th style="width: 15%">请假人</th>
+                    <th style="width: 15%">目的地</th>
+                    <th style="width: 15%">开始日期</th>
+                    <th style="width: 15%">结束日期</th>
+                    <th style="width: 15%">状态</th>
+                    <th style="width: 25%">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <!-- 动态填充 -->
+                </tbody>
+            </table>
+
+            <!-- 分页 -->
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    第 <span id="cur-page">1</span> 页 / 共 <span id="total-page">1</span> 页，共 <span id="total-counts">0</span> 条
+                </div>
+                <div class="pagination-controls">
+                    <button id="first-page" class="page-btn" disabled>首页</button>
+                    <button id="prev-page" class="page-btn" disabled>上一页</button>
+                    <div id="page-numbers" style="display:flex; gap:4px;"></div>
+                    <button id="next-page" class="page-btn" disabled>下一页</button>
+                    <button id="last-page" class="page-btn" disabled>末页</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增请求 模态框 -->
+<div id="request-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>新增请假请求</h2>
+            <button class="close-modal-btn" onclick="toggleModal('request-modal', false)">&times;</button>
+        </div>
+        <form id="request-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="user-name">请假人</label>
+                    <input type="text" id="user-name" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="destination">目的地 *</label>
+                    <input type="text" id="destination" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="purpose">请假目的 *</label>
+                    <input type="text" id="purpose" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start-date">开始日期 *</label>
+                    <input type="date" id="start-date" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="end-date">结束日期 *</label>
+                    <input type="date" id="end-date" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="avg-working-hours">每日抵扣工时</label>
+                    <input type="text" id="avg-working-hours" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="description">详细说明</label>
+                <textarea id="description" class="form-control"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="toggleModal('request-modal', false)">取消</button>
+                <button type="submit" class="btn-submit">提交请求</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 详情 模态框 -->
+<div id="detail-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>请假详情</h2>
+            <button class="close-modal-btn" onclick="toggleModal('detail-modal', false)">&times;</button>
+        </div>
+        <div id="detail-content" style="font-size: 14px; line-height: 1.8;">
+            <!-- 动态填充 -->
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-submit" onclick="toggleModal('detail-modal', false)">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 消息/Loading 弹窗 (公用) -->
+<div id="modal" class="modal-overlay" style="z-index: 2000;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div id="modal-body"></div>
+        <div id="modal-buttons" class="modal-footer" style="justify-content: center;"></div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // JS 逻辑保持不变，完全保留您的 fetch 调用
+    // ==========================================
+
+    const pageInfo = {
+        curPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalCount: 0
+    };
+
+    const ApprovalEnum = {
+        "PENDING": 0,
+        "APPROVED": 1,
+        "REJECTED": 2
+    };
+
+    // 绑定 DOM
+    const requestModal = document.getElementById('request-modal');
+    const detailModal = document.getElementById('detail-modal');
+    const requestForm = document.getElementById('request-form');
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+
+    // 通用弹窗控制
+    function toggleModal(id, show) {
+        document.getElementById(id).style.display = show ? 'flex' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initPagination();
+        updateDashboard();
+        // 绑定按钮
+        document.getElementById('add-request-btn').addEventListener('click', () => toggleModal('request-modal', true));
+
+        requestForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            addNewRequest();
+        });
+    });
+
+    // ----------------- 分页逻辑 -----------------
+    function initPagination() {
+        document.getElementById('first-page').addEventListener('click', goToFirstPage);
+        document.getElementById('prev-page').addEventListener('click', goToPrevPage);
+        document.getElementById('next-page').addEventListener('click', goToNextPage);
+        document.getElementById('last-page').addEventListener('click', goToLastPage);
+        renderRecentRequests();
+    }
+
+    function updatePaginationInfo(data) {
+        pageInfo.curPage = data.pageNo || 1;
+        pageInfo.totalPages = data.pages || 1;
+        pageInfo.totalCount = data.total || 0;
+        pageInfo.pageSize = data.size || 10;
+
+        document.getElementById('cur-page').textContent = pageInfo.curPage;
+        document.getElementById('total-page').textContent = pageInfo.totalPages;
+        document.getElementById('total-counts').textContent = pageInfo.totalCount;
+
+        renderPageNumbers();
+        updatePaginationButtons();
+    }
+
+    function renderPageNumbers() {
+        const container = document.getElementById('page-numbers');
+        container.innerHTML = `<button class="page-btn active">${pageInfo.curPage}</button>`;
+        // 简化版页码，若需完整逻辑可复用您之前的代码
+    }
+
+    function updatePaginationButtons() {
+        document.getElementById('first-page').disabled = pageInfo.curPage <= 1;
+        document.getElementById('prev-page').disabled = pageInfo.curPage <= 1;
+        document.getElementById('next-page').disabled = pageInfo.curPage >= pageInfo.totalPages;
+        document.getElementById('last-page').disabled = pageInfo.curPage >= pageInfo.totalPages;
+    }
+
+    function goToFirstPage() { if (pageInfo.curPage > 1) { pageInfo.curPage = 1; renderRecentRequests(); } }
+    function goToPrevPage() { if (pageInfo.curPage > 1) { pageInfo.curPage--; renderRecentRequests(); } }
+    function goToNextPage() { if (pageInfo.curPage < pageInfo.totalPages) { pageInfo.curPage++; renderRecentRequests(); } }
+    function goToLastPage() { if (pageInfo.curPage < pageInfo.totalPages) { pageInfo.curPage = pageInfo.totalPages; renderRecentRequests(); } }
+
+    // ----------------- 消息弹窗 -----------------
+    function showModal(type, message) {
+        modalBody.innerHTML = '';
+        modalButtons.innerHTML = '';
+        if (type === 'loading') {
+            modalBody.innerHTML = `<div class="spinner"></div><p style="margin-top:10px">${message}</p>`;
+        } else {
+            modalBody.innerHTML = `<p>${message}</p>`;
+            const okButton = document.createElement('button');
+            okButton.className = 'btn-submit';
+            okButton.textContent = '确定';
+            okButton.onclick = () => modal.style.display = 'none';
+            modalButtons.appendChild(okButton);
+        }
+        modal.style.display = 'flex';
+    }
+
+    // ----------------- API 逻辑 (保留您的 fetch) -----------------
+
+    // 1. 获取统计
+    async function updateDashboard() {
+        try {
+            const response = await fetch('/leave/counts');
+            if (!response.ok) throw new Error(`服务器错误: ${response.statusText}`);
+            const data = await response.json();
+
+            const totalRequests = data.total || 0;
+            let pendingRequests = 0;
+            let approvedRequests = 0;
+            let rejectedRequests = 0;
+
+            if(data.item) {
+                data.item.forEach(value => {
+                    if (value.status === ApprovalEnum.PENDING) pendingRequests = value.count;
+                    else if (value.status === ApprovalEnum.APPROVED) approvedRequests = value.count;
+                    else if (value.status === ApprovalEnum.REJECTED) rejectedRequests = value.count;
+                });
+            }
+
+            document.getElementById('total-requests').textContent = totalRequests;
+            document.getElementById('pending-requests').textContent = pendingRequests;
+            document.getElementById('approved-requests').textContent = approvedRequests;
+            document.getElementById('completed-trips').textContent = rejectedRequests;
+
+        } catch (error) {
+            console.error('统计加载失败', error);
+        }
+    }
+
+    // 2. 获取列表
+    async function renderRecentRequests() {
+        const tableBody = document.querySelector('#recent-requests tbody');
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">加载中...</td></tr>';
+
+        try {
+            const response = await fetch("/leave/list?pageNo=" + pageInfo.curPage + "&pageSize=" + pageInfo.pageSize);
+            if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
+            const data = await response.json();
+            const recentTrips = data.list || [];
+
+            tableBody.innerHTML = '';
+            if(recentTrips.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">暂无数据</td></tr>';
+                 return;
+            }
+
+            recentTrips.forEach(trip => {
+                const row = document.createElement('tr');
+                let statusClass = '', statusText = '';
+
+                switch (trip.status) {
+                    case ApprovalEnum.PENDING: statusClass = 'status-pending'; statusText = '待审批'; break;
+                    case ApprovalEnum.APPROVED: statusClass = 'status-approved'; statusText = '已批准'; break;
+                    case ApprovalEnum.REJECTED: statusClass = 'status-rejected'; statusText = '已拒绝'; break;
+                }
+
+                row.innerHTML = `
+                    <td>${trip.user_name}</td>
+                    <td>${trip.destination}</td>
+                    <td>${formatDate(trip.start_date)}</td>
+                    <td>${formatDate(trip.end_date)}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="action-buttons">
+                        <button class="row-btn btn-view" onclick="viewRequestDetails(${trip.id})">查看</button>
+                        <button class="row-btn btn-approve" onclick="approve(${trip.id}, ${trip.status})">批准</button>
+                        <button class="row-btn btn-reject" onclick="reject(${trip.id}, ${trip.status})">驳回</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            updatePaginationInfo(data);
+
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">加载失败: ${error.message}</td></tr>`;
+        }
+    }
+
+    // 3. 新增请求
+    async function addNewRequest() {
+        const newRequest = {
+            'user_name': document.getElementById('user-name').value,
+            'destination': document.getElementById('destination').value,
+            'reason': document.getElementById('purpose').value,
+            'start_date': document.getElementById('start-date').value,
+            'end_date': document.getElementById('end-date').value,
+            'avg_working_hours': document.getElementById('avg-working-hours').value,
+            'description': document.getElementById('description').value,
+            'status': ApprovalEnum.PENDING,
+        };
+
+        toggleModal('request-modal', false);
+        showModal('loading', '提交中...');
+
+        try {
+            const response = await fetch('/leave/add', {
+                method: "POST",
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(newRequest)
+            });
+            if (!response.ok) throw new Error(`服务器错误`);
+            const result = await response.json();
+
+            if (result.success) {
+                showModal('success', '保存成功！');
+                updateDashboard();
+                renderRecentRequests();
+                requestForm.reset();
+            } else {
+                throw new Error(result.error || '未知错误');
+            }
+        } catch (error) {
+            showModal('error', `保存失败: ${error.message}`);
+        }
+    }
+
+    // 4. 查看详情
+    async function viewRequestDetails(id) {
+        showModal('loading', '加载详情...');
+        try {
+            const response = await fetch('/leave/info?id=' + id);
+            if (!response.ok) throw new Error(`网络错误`);
+            const trip = await response.json();
+
+            // 关闭loading
+            modal.style.display = 'none';
+
+            let statusText = ['待审批', '已批准', '已拒绝'][trip.status] || '未知';
+
+            const content = document.getElementById('detail-content');
+            content.innerHTML = `
+                <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.user_name}</div>
+                <div style="margin-bottom:10px"><strong>目的地：</strong> ${trip.destination}</div>
+                <div style="margin-bottom:10px"><strong>目的：</strong> ${trip.reason}</div>
+                <div style="margin-bottom:10px"><strong>时间：</strong> ${formatDate(trip.start_date)} 至 ${formatDate(trip.end_date)}</div>
+                <div style="margin-bottom:10px"><strong>工时：</strong> ${trip.avg_working_hours}</div>
+                <div style="margin-bottom:10px"><strong>状态：</strong> ${statusText}</div>
+                <div style="margin-bottom:10px"><strong>提交时间：</strong> ${formatDate(trip.create_date)}</div>
+                <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px">
+                    <strong>说明：</strong><br>${trip.description || '无'}
+                </div>
+            `;
+            toggleModal('detail-modal', true);
+        } catch (e) {
+            showModal('error', '加载详情失败');
+        }
+    }
+
+    // 5. 批准
+    async function approve(id, status) {
+        if (status !== ApprovalEnum.PENDING) return showModal('error', `当前状态不允许执行操作!`);
+        await handleApproval(id, ApprovalEnum.APPROVED);
+    }
+
+    // 6. 驳回
+    async function reject(id, status) {
+        if (status !== ApprovalEnum.PENDING) return showModal('error', `当前状态不允许执行操作!`);
+        await handleApproval(id, ApprovalEnum.REJECTED);
+    }
+
+    async function handleApproval(id, newStatus) {
+        showModal('loading', '处理中...');
+        try {
+            const response = await fetch('/leave/approval', {
+                method: "POST",
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ "id": id, "status": newStatus })
+            });
+            if (!response.ok) throw new Error(`服务器错误`);
+
+            showModal('success', '操作成功');
+            updateDashboard();
+            renderRecentRequests();
+        } catch(e) {
+            showModal('error', `操作失败: ${e.message}`);
+        }
+    }
+
+    // 辅助函数
+    function formatDate(dateString) {
+        if(!dateString) return '-';
+        const date = new Date(dateString);
+        return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    }
+</script>
+</body>
+</html>

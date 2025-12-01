@@ -10,7 +10,7 @@
             --primary-color: #3498db;
             --secondary-color: #2980b9;
             --success-color: #27ae60;
-            --warning-color: #f39c12; /* 新增一个颜色用于装饰 */
+            --warning-color: #f39c12;
             --light-color: #f8f9fa;
             --dark-color: #343a40;
             --text-gray: #6c757d;
@@ -25,7 +25,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 40px 20px;
-            /* 背景色保留，Canvas会叠加在上面 */
             background-color: #f0f2f5;
             color: #333;
             min-height: 100vh;
@@ -33,22 +32,20 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative; /* 为z-index上下文做准备 */
-            z-index: 1; /* 确保内容在画布之上 */
+            position: relative;
+            z-index: 1;
         }
 
-        /* --- 新增：动态背景画布样式 --- */
         #bgCanvas {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1; /* 放在最底层，不会挡住点击 */
-            pointer-events: none; /* 让鼠标事件穿透画布 */
+            z-index: -1;
+            pointer-events: none;
         }
 
-        /* --- 头部区域 --- */
         .header-section {
             text-align: center;
             margin-bottom: 50px;
@@ -72,19 +69,19 @@
         /* --- 导航卡片网格 --- */
         .nav-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            /* 【修改点1】改为 5列，确保所有卡片在同一行 */
+            grid-template-columns: repeat(5, 1fr);
             gap: 25px;
             width: 100%;
-            max-width: 1500px;
+            max-width: 1600px; /*稍微调大一点最大宽度，防止5个卡片太挤*/
             padding: 0 20px;
             animation: fadeInUp 0.6s ease-out 0.2s backwards;
         }
 
-        /* --- 单个卡片样式 --- */
         .nav-card {
-            background-color: rgba(255, 255, 255, 0.95); /* 稍微增加一点透明度，让背景球隐约可见 */
+            background-color: rgba(255, 255, 255, 0.95);
             border-radius: 16px;
-            padding: 40px 25px;
+            padding: 40px 15px; /* 左右内边距稍微减小一点，适应5列布局 */
             text-decoration: none;
             color: var(--dark-color);
             box-shadow: var(--shadow);
@@ -97,7 +94,7 @@
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.02);
             min-width: 0;
-            backdrop-filter: blur(5px); /* 毛玻璃特效，增加高级感 */
+            backdrop-filter: blur(5px);
         }
 
         .nav-card:hover {
@@ -150,6 +147,7 @@
             font-size: 20px;
             margin: 0 0 10px 0;
             font-weight: 600;
+            white-space: nowrap; /* 防止标题换行 */
         }
 
         .nav-card p {
@@ -182,16 +180,23 @@
         }
 
         /* --- 响应式适配 --- */
-        @media (max-width: 1100px) {
+        /* 屏幕变窄时（例如笔记本或平板），如果不希望5列挤在一起，通常建议折行 */
+        /* 但如果您希望尽可能保持一行，可以调小这个断点，或者保留此处逻辑 */
+        @media (max-width: 1200px) {
             .nav-grid {
-                grid-template-columns: repeat(2, 1fr);
-                max-width: 800px;
+                grid-template-columns: repeat(3, 1fr); /* 中等屏幕变3列 */
+            }
+        }
+
+        @media (max-width: 800px) {
+            .nav-grid {
+                grid-template-columns: repeat(2, 1fr); /* 平板变2列 */
             }
         }
 
         @media (max-width: 600px) {
             .nav-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr; /* 手机单列 */
             }
             .nav-card {
                 flex-direction: row;
@@ -239,12 +244,26 @@
 
         <a href="{{ url_for('travel.index') }}" class="nav-card">
             <div class="icon-box">
+                <!-- 保持原有的飞机图标 -->
                 <svg viewBox="0 0 24 24"><path d="M2.5 19h19v2h-19zm19.57-9.36c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 1.82 3.16.77 1.33 16.02-4.3c.8-.21 1.28-1.05 1.07-1.85z"/></svg>
             </div>
             <div>
                 <h2>出差管理</h2>
                 <p>申请与管理出差行程。</p>
                 <div class="action-text">管理行程 →</div>
+            </div>
+        </a>
+
+        <!-- 【修改点2】请假管理 -->
+        <a href="{{ url_for('leave.index') }}" class="nav-card">
+            <div class="icon-box">
+                <!-- 更换为“热咖啡/休息”图标，不再是飞机 -->
+                <svg viewBox="0 0 24 24"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
+            </div>
+            <div>
+                <h2>请假管理</h2>
+                <p>申请与管理请假事宜。</p>
+                <div class="action-text">管理请假 →</div>
             </div>
         </a>
 
@@ -261,13 +280,12 @@
 
     </nav>
 
-    <!-- 背景特效脚本 -->
+    <!-- 背景特效脚本保持不变 -->
     <script>
         const canvas = document.getElementById('bgCanvas');
         const ctx = canvas.getContext('2d');
         let width, height;
 
-        // 设置画布大小
         function resize() {
             width = window.innerWidth;
             height = window.innerHeight;
@@ -277,27 +295,17 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // 球体类
         class Ball {
             constructor() {
-                // 半径 30 ~ 80
                 this.radius = Math.random() * 50 + 30;
-
-                // 初始位置
                 this.x = Math.random() * (width - this.radius * 2) + this.radius;
                 this.y = Math.random() * (height - this.radius * 2) + this.radius;
-
-                // 速度逻辑：保持之前的轻快感
-                // (Math.random() * 1.5 + 0.8) 保证最小速度
                 this.vx = (Math.random() * 0.75 + 0.5) * (Math.random() > 0.5 ? 1 : -1);
                 this.vy = (Math.random() * 0.75 + 0.5) * (Math.random() > 0.5 ? 1 : -1);
-
-                // --- 完全随机颜色生成 ---
-                const r = Math.floor(Math.random() * 256); // 0-255 红
-                const g = Math.floor(Math.random() * 256); // 0-255 绿
-                const b = Math.floor(Math.random() * 256); // 0-255 蓝
-                const a = 0.25; // 固定透明度，太深了会挡住文字
-
+                const r = Math.floor(Math.random() * 256);
+                const g = Math.floor(Math.random() * 256);
+                const b = Math.floor(Math.random() * 256);
+                const a = 0.25;
                 this.color = `rgba(${r}, ${g}, ${b}, ${a})`;
             }
 
@@ -310,29 +318,23 @@
             }
 
             update() {
-                // 碰壁反弹
                 if (this.x + this.radius > width || this.x - this.radius < 0) {
                     this.vx = -this.vx;
                 }
                 if (this.y + this.radius > height || this.y - this.radius < 0) {
                     this.vy = -this.vy;
                 }
-
                 this.x += this.vx;
                 this.y += this.vy;
-
                 this.draw();
             }
         }
 
-        // 初始化球体
         const balls = [];
-        // 这里改成了 10 个球
         for (let i = 0; i < 10; i++) {
             balls.push(new Ball());
         }
 
-        // 动画循环
         function animate() {
             ctx.clearRect(0, 0, width, height);
             balls.forEach(ball => ball.update());
