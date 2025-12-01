@@ -149,8 +149,8 @@ def handle_get_data_by_page():
         cursor.execute('SELECT COUNT(*) FROM travel')
         total = cursor.fetchone()[0]
 
-        pageNo = request.args.get("pageNo")
-        pageSize = request.args.get("pageSize")
+        pageNo = int(request.args.get("pageNo"))
+        pageSize = int(request.args.get("pageSize"))
         # 计算偏移量
         offset = (pageNo - 1) * pageSize
         cursor.execute("""
