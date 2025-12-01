@@ -165,6 +165,7 @@ def handle_get_data_by_page():
             "pageNo": pageNo,
             "pageSize": pageSize,
             "total": total,
+            "pages": total / pageSize,
             "list": data_list
         })
         return jsonify(data)
