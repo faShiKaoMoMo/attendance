@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 import sqlite3
 from views.constants.constants import *
@@ -166,9 +167,30 @@ def handle_get_data_by_page():
             "pageNo": pageNo,
             "pageSize": pageSize,
             "total": total,
-            "pages": 1 if total < pageSize else total / pageSize,
+            "pages": 1 if total < pageSize else math.ceil(total / pageSize),
             "list": data_list
         }
         return jsonify(data)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@travel_bp.route('/info', methods=["GET"])
+def handle_get_data_by_id():
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        _id = request.args.get("id")
+
+        cursor.execute("""
+        SELECT * FROM travel WHERE id=?
+        """, (_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        return jsonify(dict(row))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
