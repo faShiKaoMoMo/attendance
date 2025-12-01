@@ -366,7 +366,7 @@
             </div>
             <div class="stat-card">
                 <h3 id="completed-trips">0</h3>
-                <p>已完成出差</p>
+                <p>已驳回请求</p>
             </div>
         </div>
 
@@ -561,6 +561,14 @@
     </div>
 </div>
 
+<!-- 弹窗结构 -->
+<div id="modal" class="modal-overlay">
+    <div class="modal-content">
+        <div id="modal-body"></div>
+        <div id="modal-buttons" class="modal-buttons"></div>
+    </div>
+</div>
+
 <script>
     // 模拟数据
     let businessTrips = JSON.parse(localStorage.getItem('businessTrips')) || [
@@ -614,6 +622,15 @@
     const statusFilter = document.getElementById('status-filter');
     const recordStatusFilter = document.getElementById('record-status-filter');
     const dateFilter = document.getElementById('date-filter');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+    const modal = document.getElementById('modal');
+
+    const ApprovalEnum = {
+        "PENDING": 0,
+        "APPROVED": 1,
+        "REJECTED": 2
+    }
 
     // 初始化
     document.addEventListener('DOMContentLoaded', function () {
@@ -662,17 +679,58 @@
         dateFilter.addEventListener('change', renderRecordsTable);
     });
 
-    // 更新仪表板数据
-    function updateDashboard() {
-        const totalRequests = businessTrips.length;
-        const pendingRequests = businessTrips.filter(trip => trip.status === 'pending').length;
-        const approvedRequests = businessTrips.filter(trip => trip.status === 'approved').length;
-        const completedTrips = businessTrips.filter(trip => trip.status === 'completed').length;
+    /**
+     * 显示弹窗
+     * @param {string} type - 弹窗类型 ('loading', 'success', 'error')
+     * @param {string} message - 显示的信息
+     */
+    function showModal(type, message) {
+        modalBody.innerHTML = '';
+        modalButtons.innerHTML = '';
 
-        document.getElementById('total-requests').textContent = totalRequests;
-        document.getElementById('pending-requests').textContent = pendingRequests;
-        document.getElementById('approved-requests').textContent = approvedRequests;
-        document.getElementById('completed-trips').textContent = completedTrips;
+        switch (type) {
+            case 'loading':
+                modalBody.innerHTML = `<div class="spinner"></div><p>${message}</p>`;
+                break;
+            case 'success':
+            case 'error':
+                modalBody.innerHTML = `<p>${message}</p>`;
+                const okButton = document.createElement('button');
+                okButton.textContent = '确定';
+                okButton.onclick = () => modal.style.display = 'none';
+                modalButtons.appendChild(okButton);
+                break;
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    // 更新仪表板数据
+    async function updateDashboard() {
+        // 发送请求
+        try {
+            const response = await fetch('/travel/counts')
+            if (!response.ok) throw new Error(`服务器错误: ${response.statusText}`)
+            const data = await response.json()
+            console.log('data', data)
+            const totalRequests = data.total;
+            let pendingRequests = 0;
+            let approvedRequests = 0;
+            let rejectedRequests = 0;
+            data.item.forEach(value => {
+                if (value.status === ApprovalEnum.PENDING) pendingRequests = value.count
+                else if (value.status === ApprovalEnum.APPROVED) approvedRequests = value.count
+                else if (value.status === ApprovalEnum.REJECTED) rejectedRequests = value.count
+            })
+
+            document.getElementById('total-requests').textContent = totalRequests;
+            document.getElementById('pending-requests').textContent = pendingRequests;
+            document.getElementById('approved-requests').textContent = approvedRequests;
+            document.getElementById('completed-trips').textContent = rejectedRequests;
+
+        } catch (error) {
+            showModal('error', `保存失败: ${error.message}`);
+        }
     }
 
     // 渲染出差请求表格
