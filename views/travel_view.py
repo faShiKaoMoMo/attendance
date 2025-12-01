@@ -154,7 +154,7 @@ def handle_get_data_by_page():
         # 计算偏移量
         offset = (pageNo - 1) * pageSize
         cursor.execute("""
-        SELECT * FROM travel ORDER BY create_date DESC LIMIT ? OFFSET ?
+        SELECT * FROM travel ORDER BY start_date DESC LIMIT ? OFFSET ?
         """, (pageSize, offset))
         rows = cursor.fetchall()
         conn.close()
@@ -164,7 +164,7 @@ def handle_get_data_by_page():
             "pageNo": pageNo,
             "pageSize": pageSize,
             "total": total,
-            "pages": total / pageSize,
+            "pages": 1 if total < pageSize else total / pageSize,
             "list": data_list
         }
         return jsonify(data)
