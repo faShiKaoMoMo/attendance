@@ -68,35 +68,37 @@ def get_week_type(current_date, ref_date):
     return 'odd' if week_difference % 2 == 0 else 'even'
 
 
-def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester_start_input):
-    """根据原始课表数据、日期范围和单双周规则，生成最终的 class_schedule 字典。"""
+def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester_start_input, semester_end_input):
+    """
+    根据原始课表数据、日期范围和单双周规则，生成最终的 class_schedule 字典。
+    新增 semester_end_input 用于判断学期是否结束。
+    """
     class_schedule = {}
     start_date = datetime.strptime(start_date_str, "%Y%m%d")
     end_date = datetime.strptime(end_date_str, "%Y%m%d")
 
-    # --- 处理开学基准时间 ---
-    # 默认为 2025-09-01，防止数据库字段为空或格式错误
-    ref_date = datetime(2025, 9, 1)
-
+    # --- 处理开学基准时间 (Start) ---
+    ref_date = datetime(2025, 9, 1)  # 默认值
     if semester_start_input:
-        if isinstance(semester_start_input, str):
-            try:
-                if '-' in semester_start_input:
-                    ref_date = datetime.strptime(semester_start_input, "%Y-%m-%d")
-                else:
-                    ref_date = datetime.strptime(semester_start_input, "%Y%m%d")
-            except ValueError:
-                print(f"日期格式解析错误: {semester_start_input}，使用默认值")
-        elif isinstance(semester_start_input, datetime):
-            ref_date = semester_start_input
-        elif hasattr(semester_start_input, 'year'):  # 处理 datetime.date 对象
-            ref_date = datetime(semester_start_input.year, semester_start_input.month, semester_start_input.day)
+        ref_date = parse_flexible_date(semester_start_input, ref_date)
+
+    # --- 处理学期结束时间 (End) ---
+    # 默认为很久以后，确保如果不传结束时间，默认课程一直有效
+    ref_end_date = datetime(2099, 12, 31)
+    if semester_end_input:
+        ref_end_date = parse_flexible_date(semester_end_input, ref_end_date)
 
     current_date = start_date
     while current_date <= end_date:
+        # 【关键修改】如果当前统计日期 已经超过了 学期结束日期，则跳过生成课程
+        # 注意：这里比较的是 datetime 对象
+        if current_date > ref_end_date:
+            current_date += timedelta(days=1)
+            continue
+
         weekday = current_date.weekday()
 
-        if weekday > 4:
+        if weekday > 4:  # 周六周日跳过
             current_date += timedelta(days=1)
             continue
 
@@ -124,6 +126,23 @@ def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester
         current_date += timedelta(days=1)
 
     return class_schedule
+
+
+# 抽取了一个辅助函数来处理日期的各种格式，让主代码更干净
+def parse_flexible_date(date_input, default_val):
+    if isinstance(date_input, str):
+        try:
+            if '-' in date_input:
+                return datetime.strptime(date_input, "%Y-%m-%d")
+            else:
+                return datetime.strptime(date_input, "%Y%m%d")
+        except ValueError:
+            return default_val
+    elif isinstance(date_input, datetime):
+        return date_input
+    elif hasattr(date_input, 'year'):  # datetime.date 对象
+        return datetime(date_input.year, date_input.month, date_input.day)
+    return default_val
 
 
 ####################################################################################################
@@ -163,9 +182,23 @@ def fetchdata(start_date, end_date, token, org_id, member_id):
 ####################################################################################################
 
 def statistic_person(name, record_week, total_work_days, class_schedule):
-    # 1. 初始化字典
-    result_person = {'姓名': name}
+    # --- 配置常量 (分钟) ---
+    # AM: 7:30(450) - 9:30(570) 必须在此区间签到
+    AM_WINDOW_START = 450
+    AM_WINDOW_END = 570
+    AM_SPLIT = 810  # 13:30 分界线
 
+    # PM: 13:30(810) - 14:30(870) 必须在此区间签到
+    PM_WINDOW_START = 810
+    PM_WINDOW_END = 870
+    PM_SPLIT = 1110  # 18:30 分界线
+
+    # Eve: 18:30(1110) - 23:30(1410)
+    # 晚上签到无限制，但必须在 23:30 前签退
+    EVE_CHECKOUT_LIMIT = 1410
+
+    # 1. 初始化结果
+    result_person = {'姓名': name}
     total_hours = 0
     total_valid_days = 0
 
@@ -173,72 +206,160 @@ def statistic_person(name, record_week, total_work_days, class_schedule):
     for record_day in record_week:
         checkin_date = record_day['checkin_date']
         day_str = format_datetime(checkin_date)
-        checkin_time_records = record_day['month_day_data']
 
-        # --- 收集时间点 (Points) ---
+        # 获取物理打卡时间
+        raw_checkin_records = record_day.get('month_day_data', [])
+
+        # 获取课程时间
+        person_schedule = class_schedule.get(name, {})
+        day_classes = person_schedule.get(checkin_date, [])
+
+        # --- 1. 收集所有时间点并归类 ---
         am_points = []
         pm_points = []
         eve_points = []
 
-        # 1.1 物理打卡点
-        for r in checkin_time_records:
+        # (A) 处理物理打卡
+        for r in raw_checkin_records:
             t_str = format_timestamp(r['checkin_time'])
             t_min = time_to_minutes(t_str)
+            if t_min == -1: continue
+
             point = (t_min, 'phys')
-            if t_min < 810:
+
+            # 分桶
+            if t_min < AM_SPLIT:
                 am_points.append(point)
-            elif 810 <= t_min < 1110:
+            elif AM_SPLIT <= t_min < PM_SPLIT:
                 pm_points.append(point)
             else:
                 eve_points.append(point)
 
-        # 1.2 课程时间点
-        person_schedule = class_schedule.get(name, {})
-        day_classes = person_schedule.get(checkin_date, [])
-        if day_classes:
-            for course in day_classes:
-                start_min = time_to_minutes(course['start'])
-                end_min = time_to_minutes(course['end'])
-                if start_min == -1 or end_min == -1: continue
+        # (B) 处理课程时间 (有课自动算打卡)
+        for course in day_classes:
+            start_min = time_to_minutes(course['start'])
+            end_min = time_to_minutes(course['end'])
+            if start_min == -1 or end_min == -1: continue
 
-                if start_min < 810:
-                    am_points.append((start_min, 'class'))
-                    am_points.append((end_min, 'class'))
-                elif 810 <= start_min < 1110:
-                    pm_points.append((start_min, 'class'))
-                    pm_points.append((end_min, 'class'))
-                else:
-                    eve_points.append((start_min, 'class'))
-                    eve_points.append((end_min, 'class'))
+            # 课程起止点都加入
+            p_start = (start_min, 'class')
+            p_end = (end_min, 'class')
 
-        # --- 处理各时段 ---
-        display_times = {'am_in': '-', 'am_out': '-', 'pm_in': '-', 'pm_out': '-', 'eve_in': '-', 'eve_out': '-'}
+            # 课程开始归类
+            if start_min < AM_SPLIT:
+                am_points.append(p_start)
+            elif start_min < PM_SPLIT:
+                pm_points.append(p_start)
+            else:
+                eve_points.append(p_start)
 
-        def process_points(points):
-            if not points: return 0, '-', '-'
-            sorted_points = sorted(points, key=lambda x: x[0])
-            first, last = sorted_points[0], sorted_points[-1]
-            duration = (last[0] - first[0]) / 60 if last[0] > first[0] else 0
+            # 课程结束归类
+            if end_min < AM_SPLIT:
+                am_points.append(p_end)
+            elif end_min < PM_SPLIT:
+                pm_points.append(p_end)
+            else:
+                eve_points.append(p_end)
 
-            s_str = minutes_to_time_str(first[0]) + (" (课)" if first[1] == 'class' else "")
-            e_str = minutes_to_time_str(last[0]) + (" (课)" if last[1] == 'class' else "")
-            if first[0] == last[0]: e_str = '-'
-            return duration, s_str, e_str
+        # --- 2. 核心计算逻辑 ---
 
-        eff_am, display_times['am_in'], display_times['am_out'] = process_points(am_points)
-        eff_pm, display_times['pm_in'], display_times['pm_out'] = process_points(pm_points)
-        eff_eve, display_times['eve_in'], display_times['eve_out'] = process_points(eve_points)
+        def calculate_session(points, start_min_limit, start_max_limit, end_hard_limit=None):
+            """
+            逻辑更新：
+            1. 优先检查物理打卡是否在窗口内（有效）。
+            2. 如果物理打卡迟到或缺失，但当天此时段有课，则使用课程开始时间作为签到点（自动修正）。
+            3. 如果既没有效打卡也没课，才算无效。
+            """
+            if not points:
+                return 0, '-', '-'
+
+            # 1. 分离物理打卡点和课程点
+            phys_points = sorted([p for p in points if p[1] == 'phys'], key=lambda x: x[0])
+            class_points = sorted([p for p in points if p[1] == 'class'], key=lambda x: x[0])
+
+            valid_start_time = None
+            start_source = None  # 用于标记来源 ('phys' 或 'class')
+
+            # --- A. 尝试寻找有效的物理打卡 ---
+            if phys_points:
+                first_phys = phys_points[0]
+                is_phys_valid = True
+
+                # 如果有时间窗口限制（上午/下午），检查是否越界
+                if start_min_limit is not None and start_max_limit is not None:
+                    if not (start_min_limit <= first_phys[0] <= start_max_limit):
+                        is_phys_valid = False
+
+                # 如果物理打卡有效，优先采用 (为了记录更多时长，或者真实的早到)
+                if is_phys_valid:
+                    valid_start_time = first_phys[0]
+                    start_source = 'phys'
+
+            # --- B. 如果没有有效物理打卡(迟到/缺卡)，检查是否有课兜底 ---
+            if valid_start_time is None and class_points:
+                # 只要有课，就视为出勤，并使用上课时间作为开始时间
+                valid_start_time = class_points[0][0]
+                start_source = 'class'
+
+            # --- C. 最终校验起点 ---
+            if valid_start_time is None:
+                # 既没在规定时间打卡，也没课 -> 无效
+                return 0, '-', '-'
+
+            # --- D. 确定结束时间 ---
+            # 结束时间取该时段所有记录（物理+课程）里最晚的那个
+            # 这样保证：如果下课后还工作了，算到物理签退；如果早退了但课表显示到很晚，算到课表结束
+            all_sorted = sorted(points, key=lambda x: x[0])
+            end_time = all_sorted[-1][0]
+            end_source = all_sorted[-1][1]
+
+            # --- E. 校验晚上签退硬限制 ---
+            if end_hard_limit is not None and end_time > end_hard_limit:
+                return 0, '-', '-'
+
+            # 格式化显示字符串
+            start_str = minutes_to_time_str(valid_start_time) + ("(课)" if start_source == 'class' else "")
+
+            # --- F. 校验单次打卡 (只有起点没有终点，或起点终点重合) ---
+            if valid_start_time == end_time:
+                # 只有签到，展示签到时间，签退缺失
+                return 0, start_str, '-'
+
+            # --- G. 正常计算 ---
+            duration = (end_time - valid_start_time) / 60.0
+            end_str = minutes_to_time_str(end_time) + ("(课)" if end_source == 'class' else "")
+
+            return duration, start_str, end_str
+
+        # --- 3. 分别计算三个时段 ---
+
+        # 上午：窗口 7:30-9:30
+        eff_am, am_in, am_out = calculate_session(am_points, AM_WINDOW_START, AM_WINDOW_END)
+
+        # 下午：窗口 13:30-14:30
+        eff_pm, pm_in, pm_out = calculate_session(pm_points, PM_WINDOW_START, PM_WINDOW_END)
+
+        # 晚上：起点无限制(None)，终点限制 23:30 (EVE_CHECKOUT_LIMIT)
+        eff_eve, eve_in, eve_out = calculate_session(eve_points, None, None, end_hard_limit=EVE_CHECKOUT_LIMIT)
 
         # 汇总
-        total_hours += eff_am + eff_pm + eff_eve
-        result_person[day_str] = display_times  # 记录当天的打卡详情
+        day_total = eff_am + eff_pm + eff_eve
+        total_hours += day_total
 
+        # 记录
+        display_times = {
+            'am_in': am_in, 'am_out': am_out,
+            'pm_in': pm_in, 'pm_out': pm_out,
+            'eve_in': eve_in, 'eve_out': eve_out
+        }
+        result_person[day_str] = display_times
+
+        # 有效天数 (保持原逻辑)
         if eff_am > 0 and eff_pm > 0:
             total_valid_days += 1
 
-    # --- 2. 统计字段计算 ---
+    # --- 4. 最终统计 ---
     total_hours = round(total_hours, 2)
-
     avg_daily_hours = 0
     if total_work_days > 0:
         avg_daily_hours = round(total_hours / total_work_days, 2)
@@ -277,20 +398,22 @@ def fetch(conn, cursor, token, req_data):
 
     # 1. 获取课表和开学时间
     # 【修改】：增加查询 start_date
-    cursor.execute('SELECT content, start_date FROM `class` ORDER BY id DESC LIMIT 1')
+    cursor.execute('SELECT content, start_date, end_date FROM `class` ORDER BY id DESC LIMIT 1')
     row = cursor.fetchone()
 
     raw_schedule = {}
     semester_start = None
+    semester_end = None
 
     if row:
         # 防止内容为空
         raw_schedule = json.loads(row[0]) if row[0] else {}
-        # 读取开学日期 (假设是 row[1])
+        # 读取开学日期
         semester_start = row[1]
+        semester_end = row[2]
 
-    # 【修改】：传入 semester_start
-    class_info = generate_class_schedule(start_date, end_date, raw_schedule, semester_start)
+    # 传入 semester_start
+    class_info = generate_class_schedule(start_date, end_date, raw_schedule, semester_start, semester_end)
 
     # 2. 获取实验室配置 (排除名单)
     cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC')

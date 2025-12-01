@@ -246,6 +246,12 @@
         #modal-close-btn { background-color: #6c757d; }
         #modal-close-btn:hover { background-color: #5a6268; }
         #modal-close-btn.error { background-color: var(--danger-color); }
+        #modal-close-btn.success {
+            background-color: var(--success-color); /* 使用定义好的绿色 */
+        }
+        #modal-close-btn.success:hover {
+            background-color: #219150; /* 鼠标悬停时稍微深一点的绿色 */
+        }
 
         #captcha-submit-btn { background-color: var(--primary-color); }
         #captcha-submit-btn:hover { background-color: var(--secondary-color); }
@@ -426,21 +432,32 @@
     startDateInput.addEventListener('change', calculateWeekdays);
     endDateInput.addEventListener('change', calculateWeekdays);
 
-    function setWeeklyDateRange() {
+function setWeeklyDateRange() {
         const today = new Date();
-        const tempDate = new Date();
+        const endDate = new Date(today);
+
+        // 获取今天是周几 (0是周日, 1-6是周一到周六)
         const dayOfWeek = today.getDay();
-        // 假设周一为第一天. getDay() 0是周日.
-        const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
-        tempDate.setDate(today.getDate() - daysToSubtract); // 本周一
-        const startDate = new Date(tempDate);
+        // 计算回溯天数以找到“今天之前的最迟的周六”
+        // 如果今天是周日(0)，上个周六是昨天 (-1)
+        // 如果今天是周一(1)，上个周六是前天 (-2)
+        // ...
+        // 如果今天是周六(6)，"之前"的周六是上周六 (-7)
+        const daysToSubtract = dayOfWeek + 1;
 
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6); // 本周日
+        // 设置结束日期为最近的周六
+        endDate.setDate(today.getDate() - daysToSubtract);
 
+        // 设置开始日期 (结束日期往前推6天，即周日)
+        const startDate = new Date(endDate);
+        startDate.setDate(endDate.getDate() - 6);
+
+        // 赋值给输入框
         startDateInput.value = formatDateForInput(startDate);
         endDateInput.value = formatDateForInput(endDate);
+
+        // 触发工作日计算
         calculateWeekdays();
     }
 
@@ -492,7 +509,7 @@
         modalSpinner.style.display = 'block';
         modalCloseBtn.style.display = 'none';
         captchaContainer.style.display = 'none';
-        modalCloseBtn.classList.remove('error');
+        modalCloseBtn.classList.remove('error', 'success');
         modalOverlay.style.display = 'flex';
     }
 
@@ -571,6 +588,7 @@
                     modalSpinner.style.display = 'none';
                     modalCloseBtn.style.display = 'block';
                     modalCloseBtn.classList.remove('error');
+                    modalCloseBtn.classList.add('success');
                     modalCloseBtn.textContent = '好的';
 
                 } else if (data.status === 2) { // 需要验证码
