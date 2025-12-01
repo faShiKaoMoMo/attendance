@@ -51,7 +51,7 @@ def handle_request_count():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@travel_bp.route('/add', methods='POST')
+@travel_bp.route('/add', methods=['POST'])
 def handle_add_request():
     try:
         req_data = request.get_json()
@@ -82,7 +82,7 @@ def handle_add_request():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@travel_bp.route('/update', methods='POST')
+@travel_bp.route('/update', methods=['POST'])
 def handle_update_request():
     try:
         req_data = request.get_json()
@@ -113,7 +113,7 @@ def handle_update_request():
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@travel_bp.route('/approval', methods="POST")
+@travel_bp.route('/approval', methods=["POST"])
 def handle_approval_request():
     try:
         req_data = request.get_json()
@@ -137,7 +137,7 @@ def handle_approval_request():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@travel_bp.route('/list', methods="GET")
+@travel_bp.route('/list', methods=["GET"])
 def handle_get_data_by_page():
     try:
         conn = sqlite3.connect(DB_FILE)
