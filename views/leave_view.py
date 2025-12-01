@@ -5,7 +5,7 @@ from views.constants.constants import *
 
 from flask import Blueprint, render_template, request, jsonify
 
-leave_bp = Blueprint('leave', __name__, url_prefix='/travel')
+leave_bp = Blueprint('leave', __name__, url_prefix='/leave')
 
 
 @leave_bp.route('/')

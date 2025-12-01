@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>请假统计管理</title>
+    <title>请假管理</title>
     <style>
-        /* ==================== 核心风格 (从考勤配置页面复刻) ==================== */
+        /* ==================== 核心风格 (保持不变) ==================== */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2980b9;
@@ -46,7 +46,7 @@
         /* --- 内容区域 --- */
         .content-wrapper { padding: 30px; flex-grow: 1; display: flex; flex-direction: column; gap: 30px; }
 
-        /* --- 统计卡片 (原有Stats的样式升级) --- */
+        /* --- 统计卡片 --- */
         .stats-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
@@ -75,28 +75,26 @@
         .add-btn:hover { background-color: var(--secondary-color); }
         .add-btn::before { content: "+"; font-size: 18px; font-weight: bold; }
 
-        /* --- 表格样式 (复用 Styled Table) --- */
+        /* --- 表格样式 --- */
         .table-container { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: white; }
         .styled-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
         .styled-table th {
             background-color: var(--light-bg);
             padding: 12px 15px;
-            /* text-align: left;  <-- 删除或注释掉这一行 */
-            text-align: center; /* <-- 修改为 center */
+            text-align: center;
             font-weight: 600;
             color: #343a40;
             border-bottom: 2px solid var(--border-color);
         }
 
-        /* 找到这一块 (约第97行) */
         .styled-table td {
             padding: 10px 15px;
             border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
             font-size: 14px;
             color: #495057;
-            text-align: center; /* <-- 新增这一行 */
+            text-align: center;
         }
         .styled-table tr:hover { background-color: #f8fafc; }
 
@@ -106,11 +104,11 @@
         .status-approved { background-color: #d1ecf1; color: #0c5460; }
         .status-rejected { background-color: #f8d7da; color: #721c24; }
 
-        /* 操作按钮组 (高度36px) */
+        /* 操作按钮组 */
         .action-buttons {
             display: flex;
             gap: 8px;
-            justify-content: center; /* <-- 新增这一行，让按钮组在单元格内居中 */
+            justify-content: center;
         }
         .row-btn {
             height: 32px; padding: 0 12px; font-size: 12px;
@@ -122,7 +120,7 @@
         .btn-approve { background-color: var(--success-color); }
         .btn-reject { background-color: var(--danger-color); }
 
-        /* --- 分页 (样式匹配) --- */
+        /* --- 分页 --- */
         .pagination-container {
             display: flex; justify-content: space-between; align-items: center;
             padding: 12px 20px; border-top: 1px solid var(--border-color);
@@ -142,7 +140,7 @@
         .page-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
         .page-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--light-bg); }
 
-        /* --- 模态框 (统一风格) --- */
+        /* --- 模态框 --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); display: none;
@@ -217,10 +215,10 @@
             <table class="styled-table" id="recent-requests">
                 <thead>
                 <tr>
-                    <th style="width: 15%">请假人</th>
-                    <th style="width: 15%">目的地</th>
-                    <th style="width: 15%">开始日期</th>
-                    <th style="width: 15%">结束日期</th>
+                    <!-- 移除了目的地列，调整了宽度 -->
+                    <th style="width: 20%">请假人</th>
+                    <th style="width: 20%">开始日期</th>
+                    <th style="width: 20%">结束日期</th>
                     <th style="width: 15%">状态</th>
                     <th style="width: 25%">操作</th>
                 </tr>
@@ -247,7 +245,7 @@
     </div>
 </div>
 
-<!-- 新增请求 模态框 -->
+<!-- 新增请求 模态框 (移除了目的地、目的、工时) -->
 <div id="request-modal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -257,20 +255,11 @@
         <form id="request-form">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="user-name">请假人</label>
+                    <label for="user-name">请假人 *</label>
                     <input type="text" id="user-name" class="form-control" required>
                 </div>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="destination">目的地 *</label>
-                    <input type="text" id="destination" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="purpose">请假目的 *</label>
-                    <input type="text" id="purpose" class="form-control" required>
-                </div>
-            </div>
+            <!-- 移除了目的地和目的的行 -->
             <div class="form-row">
                 <div class="form-group">
                     <label for="start-date">开始日期 *</label>
@@ -281,12 +270,7 @@
                     <input type="date" id="end-date" class="form-control" required>
                 </div>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="avg-working-hours">每日抵扣工时</label>
-                    <input type="text" id="avg-working-hours" class="form-control" required>
-                </div>
-            </div>
+            <!-- 移除了工时行 -->
             <div class="form-group">
                 <label for="description">详细说明</label>
                 <textarea id="description" class="form-control"></textarea>
@@ -325,7 +309,7 @@
 
 <script>
     // ==========================================
-    // JS 逻辑保持不变，完全保留您的 fetch 调用
+    // JS 逻辑
     // ==========================================
 
     const pageInfo = {
@@ -392,7 +376,6 @@
     function renderPageNumbers() {
         const container = document.getElementById('page-numbers');
         container.innerHTML = `<button class="page-btn active">${pageInfo.curPage}</button>`;
-        // 简化版页码，若需完整逻辑可复用您之前的代码
     }
 
     function updatePaginationButtons() {
@@ -424,7 +407,7 @@
         modal.style.display = 'flex';
     }
 
-    // ----------------- API 逻辑 (保留您的 fetch) -----------------
+    // ----------------- API 逻辑 -----------------
 
     // 1. 获取统计
     async function updateDashboard() {
@@ -459,7 +442,7 @@
     // 2. 获取列表
     async function renderRecentRequests() {
         const tableBody = document.querySelector('#recent-requests tbody');
-        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">加载中...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center">加载中...</td></tr>'; // colspan 改为 5
 
         try {
             const response = await fetch("/leave/list?pageNo=" + pageInfo.curPage + "&pageSize=" + pageInfo.pageSize);
@@ -469,7 +452,7 @@
 
             tableBody.innerHTML = '';
             if(recentTrips.length === 0) {
-                 tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">暂无数据</td></tr>';
+                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center">暂无数据</td></tr>';
                  return;
             }
 
@@ -483,9 +466,9 @@
                     case ApprovalEnum.REJECTED: statusClass = 'status-rejected'; statusText = '已拒绝'; break;
                 }
 
+                // 移除了目的地列
                 row.innerHTML = `
                     <td>${trip.user_name}</td>
-                    <td>${trip.destination}</td>
                     <td>${formatDate(trip.start_date)}</td>
                     <td>${formatDate(trip.end_date)}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
@@ -501,19 +484,20 @@
             updatePaginationInfo(data);
 
         } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">加载失败: ${error.message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:red">加载失败: ${error.message}</td></tr>`;
         }
     }
 
     // 3. 新增请求
     async function addNewRequest() {
+        // 构建请求对象，已移除的字段传空值，防止后端报错
         const newRequest = {
             'user_name': document.getElementById('user-name').value,
-            'destination': document.getElementById('destination').value,
-            'reason': document.getElementById('purpose').value,
+            'destination': "", // 前端已移除，传空
+            'reason': "",      // 前端已移除，传空
             'start_date': document.getElementById('start-date').value,
             'end_date': document.getElementById('end-date').value,
-            'avg_working_hours': document.getElementById('avg-working-hours').value,
+            'avg_working_hours': 0, // 前端已移除，传0
             'description': document.getElementById('description').value,
             'status': ApprovalEnum.PENDING,
         };
@@ -557,12 +541,10 @@
             let statusText = ['待审批', '已批准', '已拒绝'][trip.status] || '未知';
 
             const content = document.getElementById('detail-content');
+            // 移除了目的地、目的、工时的显示
             content.innerHTML = `
                 <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.user_name}</div>
-                <div style="margin-bottom:10px"><strong>目的地：</strong> ${trip.destination}</div>
-                <div style="margin-bottom:10px"><strong>目的：</strong> ${trip.reason}</div>
                 <div style="margin-bottom:10px"><strong>时间：</strong> ${formatDate(trip.start_date)} 至 ${formatDate(trip.end_date)}</div>
-                <div style="margin-bottom:10px"><strong>工时：</strong> ${trip.avg_working_hours}</div>
                 <div style="margin-bottom:10px"><strong>状态：</strong> ${statusText}</div>
                 <div style="margin-bottom:10px"><strong>提交时间：</strong> ${formatDate(trip.create_date)}</div>
                 <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px">

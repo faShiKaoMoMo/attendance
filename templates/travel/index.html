@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>出差统计管理</title>
+    <title>出差管理</title>
     <style>
         /* ==================== 核心风格 (从考勤配置页面复刻) ==================== */
         :root {
@@ -217,7 +217,7 @@
             <table class="styled-table" id="recent-requests">
                 <thead>
                 <tr>
-                    <th style="width: 15%">出差人</th>
+                    <th style="width: 15%">申请人</th>
                     <th style="width: 15%">目的地</th>
                     <th style="width: 15%">开始日期</th>
                     <th style="width: 15%">结束日期</th>
@@ -257,7 +257,7 @@
         <form id="request-form">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="user-name">出差人</label>
+                    <label for="user-name">申请人</label>
                     <input type="text" id="user-name" class="form-control" required>
                 </div>
             </div>
@@ -560,7 +560,7 @@
             content.innerHTML = `
                 <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.user_name}</div>
                 <div style="margin-bottom:10px"><strong>目的地：</strong> ${trip.destination}</div>
-                <div style="margin-bottom:10px"><strong>目的：</strong> ${trip.reason}</div>
+                <div style="margin-bottom:10px"><strong>出差目的：</strong> ${trip.reason}</div>
                 <div style="margin-bottom:10px"><strong>时间：</strong> ${formatDate(trip.start_date)} 至 ${formatDate(trip.end_date)}</div>
                 <div style="margin-bottom:10px"><strong>工时：</strong> ${trip.avg_working_hours}</div>
                 <div style="margin-bottom:10px"><strong>状态：</strong> ${statusText}</div>
