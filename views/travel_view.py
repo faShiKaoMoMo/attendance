@@ -61,6 +61,7 @@ def handle_add_request():
         start_date = req_data.get("start_date")
         end_date = req_data.get("end_date")
         description = req_data.get("description")
+        avg_working_hours = req_data.get("avg_working_hours")
         status = req_data.get("status")
         now = datetime.now()
 
@@ -69,10 +70,10 @@ def handle_add_request():
 
         cursor.execute("""
             INSERT INTO travel (user_name, destination, reason, start_date, end_date, 
-            status, description, create_date, update_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            status, avg_working_hours, description, create_date, update_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (user_name, destination, reason, start_date, end_date,
-                  status, description, now, now))
+                  status, avg_working_hours, description, now, now))
 
         _id = cursor.lastrowid
         conn.commit()

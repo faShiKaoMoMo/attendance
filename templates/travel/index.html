@@ -643,6 +643,12 @@
                     <input type="date" id="end-date" required>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="avg-working-hours">每日抵扣工时</label>
+                    <input type="text" id="avg-working-hours" required>
+                </div>
+            </div>
 
             <div class="form-group">
                 <label for="description">详细说明</label>
@@ -990,33 +996,6 @@
         }
     }
 
-    function goToPage() {
-        const input = document.getElementById('goto-page');
-        let pageNum = parseInt(input.value, 10);
-
-        // 验证输入
-        if (isNaN(pageNum) || pageNum < 1) {
-            pageNum = 1;
-        } else if (pageNum > pageInfo.totalPages) {
-            pageNum = pageInfo.totalPages;
-        }
-
-        if (pageNum !== pageInfo.curPage) {
-            pageInfo.curPage = pageNum;
-            renderRecentRequests()
-        }
-    }
-
-    function changePageSize() {
-        const newPageSize = parseInt(document.getElementById('page-size').value, 10);
-
-        if (newPageSize !== pageInfo.pageSize) {
-            pageInfo.pageSize = newPageSize;
-            pageInfo.curPage = 1; // 重置到第一页
-            renderRecentRequests()
-        }
-    }
-
     // 渲染最近出差请求
     async function renderRecentRequests() {
         const tableBody = document.querySelector('#recent-requests tbody');
@@ -1080,6 +1059,7 @@
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
         const description = document.getElementById('description').value;
+        const avgWorkingHours = document.getElementById('avg-working-hours').value;
 
         // 创建新的出差请求
         const newRequest = {
@@ -1088,6 +1068,7 @@
             'reason': purpose,
             'start_date': startDate,
             'end_date': endDate,
+            'avg_working_hours': avgWorkingHours,
             'description': description,
             'status': ApprovalEnum.PENDING,
         };
@@ -1163,6 +1144,10 @@
                         <label>结束日期</label>
                         <p>${formatDate(trip.end_date)}</p>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>每日抵扣工时</label>
+                    <p>${trip.avg_working_hours}</p>
                 </div>
                 <div class="form-group">
                     <label>详细说明</label>
