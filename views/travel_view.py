@@ -72,10 +72,12 @@ def handle_add_request():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (user_name, destination, reason, start_date, end_date,
                   status, description, now, now))
+
+        _id = cursor.lastrowid
         conn.commit()
         conn.close()
 
-        return jsonify({"success": True, "message": "出差记录新增成功"})
+        return jsonify({"success": True, "message": "出差记录新增成功", "id": _id})
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -149,24 +151,24 @@ def handle_get_data_by_page():
         cursor.execute('SELECT COUNT(*) FROM travel')
         total = cursor.fetchone()[0]
 
-        pageNo = request.args.get("pageNo")
-        pageSize = request.args.get("pageSize")
+        pageNo = int(request.args.get("pageNo"))
+        pageSize = int(request.args.get("pageSize"))
         # 计算偏移量
         offset = (pageNo - 1) * pageSize
         cursor.execute("""
-        SELECT * FROM travel ORDER BY create_date DESC LIMIT ? OFFSET ?
+        SELECT * FROM travel ORDER BY start_date DESC LIMIT ? OFFSET ?
         """, (pageSize, offset))
         rows = cursor.fetchall()
         conn.close()
 
         data_list = [dict(row) for row in rows]
-        data = []
-        data.append({
+        data = {
             "pageNo": pageNo,
             "pageSize": pageSize,
             "total": total,
+            "pages": 1 if total < pageSize else total / pageSize,
             "list": data_list
-        })
+        }
         return jsonify(data)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
