@@ -4,10 +4,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-import openpyxl
 import requests
-from openpyxl.styles import Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
 
 
 def format_datetime(date_str):
