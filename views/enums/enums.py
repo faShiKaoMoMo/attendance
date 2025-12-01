@@ -10,3 +10,13 @@ class StatisticsEnum(Enum):
     @property
     def code(self) -> int:
         return self.value
+
+
+class ApprovalEnum(Enum):
+    PENDING = 0
+    APPROVED = 1
+    REJECTED = 2
+
+    @property
+    def code(self) -> int:
+        return self.value
