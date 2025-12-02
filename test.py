@@ -8,6 +8,7 @@ cursor = conn.cursor()
 
 
 ################################################## 课表
+cursor.execute('DROP TABLE IF EXISTS "class";')
 cursor.execute('DROP TABLE IF EXISTS "semester_class";')
 
 cursor.execute("""
@@ -216,66 +217,66 @@ for row in rows:
 
 
 ################################################## 出差表
-# cursor.execute('DROP TABLE IF EXISTS "travel";')
-#
-# cursor.execute("""
-# CREATE TABLE "travel" (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     name TEXT,
-#     destination TEXT,
-#     reason TEXT,
-#     start_date DATE,
-#     end_date DATE,
-#     status INTEGER,
-#     avg_working_hours DECIMAL,
-#     description TEXT,
-#     create_date TIMESTAMP,
-#     update_date TIMESTAMP
-# );
-# """)
-#
-# cursor.execute("CREATE INDEX IF NOT EXISTS idx_travel_start_date ON travel(start_date)")
-#
-# test_travel_data = [
-#     ('王文凯', '九牧', '九牧RPA', '2025-11-03', '2025-11-07', 1, 8, '九牧RPA', '2025-10-27 09:30:00',
-#      '2025-10-27T14:20:00'),
-#     ('王文凯', '九牧', '九牧RPA', '2025-11-11', '2025-11-12', 1, 8, '九牧RPA', '2025-10-27 09:30:00',
-#      '2025-10-27T14:20:00'),
-# ]
-#
-# cursor.executemany("""
-#     INSERT INTO travel (name, destination, reason, start_date, end_date, status, avg_working_hours, description, create_date, update_date)
-#     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-# """, test_travel_data)
+cursor.execute('DROP TABLE IF EXISTS "travel";')
+
+cursor.execute("""
+CREATE TABLE "travel" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    destination TEXT,
+    reason TEXT,
+    start_date DATE,
+    end_date DATE,
+    status INTEGER,
+    avg_working_hours DECIMAL,
+    description TEXT,
+    create_date TIMESTAMP,
+    update_date TIMESTAMP
+);
+""")
+
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_travel_start_date ON travel(start_date)")
+
+test_travel_data = [
+    ('王文凯', '九牧', '九牧RPA', '2025-11-03', '2025-11-07', 1, 8, '九牧RPA', '2025-10-27 09:30:00',
+     '2025-10-27T14:20:00'),
+    ('王文凯', '九牧', '九牧RPA', '2025-11-11', '2025-11-12', 1, 8, '九牧RPA', '2025-10-27 09:30:00',
+     '2025-10-27T14:20:00'),
+]
+
+cursor.executemany("""
+    INSERT INTO travel (name, destination, reason, start_date, end_date, status, avg_working_hours, description, create_date, update_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+""", test_travel_data)
 
 
 
 ################################################## 请假表
-# cursor.execute('DROP TABLE IF EXISTS "leave";')
-#
-# cursor.execute("""
-# CREATE TABLE "leave" (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     name TEXT,
-#     start_date DATE,
-#     end_date DATE,
-#     status INTEGER,
-#     description TEXT,
-#     create_date TIMESTAMP,
-#     update_date TIMESTAMP
-# );
-# """)
-#
-# cursor.execute("CREATE INDEX IF NOT EXISTS idx_leave_start_date ON leave(start_date)")
-#
-# test_leave_data = [
-#     ('王文凯', '2025-11-10', '2025-11-10', 1, '面试', '2025-11-09 09:30:00', '2025-11-09:30:00'),
-# ]
-#
-# cursor.executemany("""
-#     INSERT INTO leave (name, start_date, end_date, status, description, create_date, update_date)
-#     VALUES (?, ?, ?, ?, ?, ?, ?)
-# """, test_leave_data)
+cursor.execute('DROP TABLE IF EXISTS "leave";')
+
+cursor.execute("""
+CREATE TABLE "leave" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    start_date DATE,
+    end_date DATE,
+    status INTEGER,
+    description TEXT,
+    create_date TIMESTAMP,
+    update_date TIMESTAMP
+);
+""")
+
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_leave_start_date ON leave(start_date)")
+
+test_leave_data = [
+    ('王文凯', '2025-11-10', '2025-11-10', 1, '面试', '2025-11-09 09:30:00', '2025-11-09:30:00'),
+]
+
+cursor.executemany("""
+    INSERT INTO leave (name, start_date, end_date, status, description, create_date, update_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+""", test_leave_data)
 
 
 
