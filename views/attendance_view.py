@@ -30,22 +30,18 @@ def statistics():
             req_data = request.get_json()
             if not req_data:
                 return jsonify({"error": "Request body 不能为空"}), 400
-
             params_str = json.dumps(req_data, ensure_ascii=False)
 
             now = datetime.now()
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
 
-            cursor.execute("""
-                INSERT INTO attendance_statistics (params, result, status, create_date, update_date)
-                VALUES (?, ?, ?, ?, ?)
-            """, (params_str, None, StatisticsEnum.RUNNING.code, now, now))
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO attendance_statistics (params, result, status, create_date, update_date)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (params_str, None, StatisticsEnum.RUNNING.code, now, now))
 
-            new_id = cursor.lastrowid
-
-            conn.commit()
-            conn.close()
+                new_id = cursor.lastrowid
 
             executor.submit(execute, new_id, req_data)
 
@@ -60,14 +56,11 @@ def get_statistics_by_id(id):
     根据ID获取单条统计任务的数据。
     """
     try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM attendance_statistics WHERE id = ?", (id,))
-        row = cursor.fetchone()
-
-        conn.close()
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM attendance_statistics WHERE id = ?", (id,))
+            row = cursor.fetchone()
 
         if row is None:
             return jsonify({"success": False, "error": f"未找到ID为 {id} 的数据"}), 404
@@ -98,22 +91,16 @@ def update_captcha(id):
         if not captcha:
             return jsonify({"success": False, "error": "请求中必须包含 'captcha' 字段"}), 400
 
-        now = datetime.now()
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE attendance_statistics
+                SET captcha = ?, status=?, update_date = ?
+                WHERE id = ?
+            """, (captcha, StatisticsEnum.RUNNING.code, datetime.now(), id))
 
-        cursor.execute("""
-            UPDATE attendance_statistics
-            SET captcha = ?, status=?, update_date = ?
-            WHERE id = ?
-        """, (captcha, StatisticsEnum.RUNNING.code, now, id))
-
-        if cursor.rowcount == 0:
-            conn.close()
-            return jsonify({"success": False, "error": f"未找到ID为 {id} 的数据"}), 404
-
-        conn.commit()
-        conn.close()
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": f"未找到ID为 {id} 的数据"}), 404
 
         return jsonify({"success": True})
     except Exception as e:
@@ -121,29 +108,27 @@ def update_captcha(id):
 
 
 def execute(_id, req_data):
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    try:
-        toke = token(conn, cursor, _id, req_data)
-        data = fetch(conn, cursor, toke, req_data)
-        file = excel(conn, cursor, data, req_data)
+    with sqlite3.connect(DB_FILE, isolation_level=None) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
 
-        cursor.execute("""
-            UPDATE attendance_statistics
-            SET result=?, status=?, update_date=?
-            WHERE id=?
-        """, ("", StatisticsEnum.SUCCESS.code, datetime.now(), _id))
-        conn.commit()
+        try:
+            toke = token(conn, cursor, _id, req_data)
+            data = fetch(conn, cursor, toke, req_data)
+            file = excel(conn, cursor, data, req_data)
 
-    except Exception as e:
-        traceback.print_exc()
-        cursor.execute("""
-            UPDATE attendance_statistics
-            SET status=?, message=?, update_date=?
-            WHERE id=?
-        """, (StatisticsEnum.FAILED.code, str(e), datetime.now(), _id))
-        conn.commit()
+            cursor.execute("""
+                UPDATE attendance_statistics
+                SET result=?, status=?, update_date=?
+                WHERE id=?
+            """, ("", StatisticsEnum.SUCCESS.code, datetime.now(), _id))
+            conn.commit()
 
-    finally:
-        conn.close()
+        except Exception as e:
+            traceback.print_exc()
+            cursor.execute("""
+                UPDATE attendance_statistics
+                SET status=?, message=?, update_date=?
+                WHERE id=?
+            """, (StatisticsEnum.FAILED.code, str(e), datetime.now(), _id))
+            conn.commit()

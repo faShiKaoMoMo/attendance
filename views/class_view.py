@@ -14,53 +14,119 @@ def index():
     return render_template('class/index.html')
 
 
-@class_bp.route('/api', methods=['GET', 'POST'])
-def handle_class_data():
-    """处理课表的读取和保存请求"""
-    if request.method == 'GET':
-        try:
-            conn = sqlite3.connect(DB_FILE)
+@class_bp.route('/list', methods=['GET'])
+def handle_class_request():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM `class` ORDER BY id DESC LIMIT 1')
-            row = cursor.fetchone()
-            conn.close()
+            cursor.execute('SELECT * FROM semester_class ORDER BY id DESC')
+            rows = cursor.fetchall()
 
-            if row:
-                data = {
-                    "id": row[0],
-                    "content": json.loads(row[1]) if row[1] else None,
-                    "start_date": row[2],
-                    "end_date": row[3],
-                    "create_date": row[4],
-                    "update_date": row[5]
-                }
-                return jsonify(data)
-            else:
-                return jsonify({})
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+        data = []
+        for row in rows:
+            data.append({
+                "id": row[0],
+                "name": row[1],
+                "start_date": row[2],
+                "end_date": row[3],
+                "enable": row[4],
+                "create_date": row[5],
+                "update_date": row[6],
+            })
 
-    if request.method == 'POST':
-        try:
-            new_data = request.get_json()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-            content_str = json.dumps(new_data.get("content", {}), ensure_ascii=False)
-            start_date = new_data.get("start_date")
-            end_date = new_data.get("end_date")
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            conn = sqlite3.connect(DB_FILE)
+@class_bp.route('/add', methods=['POST'])
+def handle_class_add():
+    try:
+        data = request.get_json()
+
+        name = data.get("name")
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        now = datetime.now()
+
+        with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                '''
-                INSERT INTO class (content, start_date, end_date, create_date, update_date)
-                VALUES (?, ?, ?, ?, ?)
-                ''',
-                (content_str, start_date, end_date, now, now)
-            )
-            conn.commit()
-            conn.close()
+            cursor.execute("""
+                INSERT INTO semester_class 
+                (name, start_date, end_date, enable, create_date, update_date)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (name, start_date, end_date, 0, now, now))
 
-            return jsonify({"success": True})
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@class_bp.route('/<int:id>/enable', methods=['POST'])
+def handle_class_enable(id):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE semester_class
+                SET enable = CASE WHEN id = ? THEN 1 ELSE 0 END
+            """, (id,))
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@class_bp.route('/<int:semester_class_id>/item', methods=['GET'])
+def handle_class_item(semester_class_id):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, semester_class_id, name, week, slot, type, create_date, update_date
+                FROM semester_class_item
+                WHERE semester_class_id = ?
+                ORDER BY week ASC, slot ASC
+            """, (semester_class_id,))
+            rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            items.append({
+                "id": row[0],
+                "name": row[2],
+                "week": row[3],
+                "slot": row[4],
+                "type": row[5],
+                "create_date": row[6],
+                "update_date": row[7]
+            })
+
+        return jsonify(items)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@class_bp.route('/<int:semester_class_id>/item/add', methods=['POST'])
+def handle_class_item_add(semester_class_id):
+    try:
+        data = request.get_json()
+
+        name = data.get("name")
+        week = data.get("week")
+        slot = data.get("slot")
+        type_ = data.get("type")
+        now = datetime.now()
+
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                    INSERT INTO semester_class_item
+                    (semester_class_id, name, week, slot, type, create_date, update_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (semester_class_id, name, week, slot, type_, now, now))
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500

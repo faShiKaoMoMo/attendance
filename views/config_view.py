@@ -24,13 +24,11 @@ def handle_config_data():
     """
     if request.method == 'GET':
         try:
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC')
-            rows = cursor.fetchall()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC')
+                rows = cursor.fetchall()
 
             data = []
             for row in rows:
@@ -65,22 +63,19 @@ def handle_config_data():
             excluded_str = json.dumps(excluded_name, ensure_ascii=False)
             now = datetime.now()
 
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-
-            if _id:
-                cursor.execute("""
-                        UPDATE attendance_config
-                        SET name=?, lab=?, excluded_name=?, update_date=?
-                        WHERE id=?
-                    """, (name, lab, excluded_str, now, _id))
-            else:
-                cursor.execute("""
-                        INSERT INTO attendance_config (name, lab, excluded_name, create_date, update_date)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (name, lab, excluded_str, now, now))
-            conn.commit()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                if _id:
+                    cursor.execute("""
+                            UPDATE attendance_config
+                            SET name=?, lab=?, excluded_name=?, update_date=?
+                            WHERE id=?
+                        """, (name, lab, excluded_str, now, _id))
+                else:
+                    cursor.execute("""
+                            INSERT INTO attendance_config (name, lab, excluded_name, create_date, update_date)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (name, lab, excluded_str, now, now))
 
             return jsonify({"success": True, "message": "配置已成功保存"})
         except Exception as e:
@@ -97,14 +92,11 @@ def handle_account_data():
     """
     if request.method == 'GET':
         try:
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            # 只选择需要的字段，避免暴露所有信息
-            cursor.execute('SELECT * FROM attendance_account ORDER BY id DESC')
-            rows = cursor.fetchall()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM attendance_account ORDER BY id DESC')
+                rows = cursor.fetchall()
 
             data = [dict(row) for row in rows]
             return jsonify(data)
@@ -124,25 +116,21 @@ def handle_account_data():
             if not name or not mobile or not password:
                 return jsonify({"success": False, "error": "名称, 手机号 和 密码 不能为空"}), 400
 
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-
-            if _id:
-                # 更新已有账号
-                cursor.execute("""
-                    UPDATE attendance_account
-                    SET name=?, mobile=?, password=?, email=?, update_date=?
-                    WHERE id=?
-                """, (name, mobile, password, email, now, _id))
-            else:
-                # 插入新账号
-                cursor.execute("""
-                    INSERT INTO attendance_account (name, mobile, password, email, create_date, update_date)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (name, mobile, password, email, now, now))
-
-            conn.commit()
-            conn.close()
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                if _id:
+                    # 更新已有账号
+                    cursor.execute("""
+                        UPDATE attendance_account
+                        SET name=?, mobile=?, password=?, email=?, update_date=?
+                        WHERE id=?
+                    """, (name, mobile, password, email, now, _id))
+                else:
+                    # 插入新账号
+                    cursor.execute("""
+                        INSERT INTO attendance_account (name, mobile, password, email, create_date, update_date)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (name, mobile, password, email, now, now))
 
             return jsonify({"success": True, "message": "账号已成功保存"})
         except sqlite3.IntegrityError as e:
