@@ -72,6 +72,11 @@ cursor.execute("""
 
 
 
+# 调课表
+cursor.execute('DROP TABLE IF EXISTS "travel";')
+
+
+
 # 出差表
 cursor.execute('DROP TABLE IF EXISTS "travel";')
 
