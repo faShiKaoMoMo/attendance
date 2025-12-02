@@ -47,7 +47,7 @@ CREATE TABLE "semester_class_item" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     semester_class_id INTEGER,
     name TEXT, -- 学生姓名
-    week INTEGER, -- 0 1 2 3 4
+    week INTEGER, -- 0周一 1周二 2周三 3周四 4周五
     slot TEXT, -- 上课节次，例如 08:00 - 09:40
     type TEXT, -- 上课类型，all odd even
     create_date TIMESTAMP,

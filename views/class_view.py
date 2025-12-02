@@ -130,3 +130,17 @@ def handle_class_item_add(semester_class_id):
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@class_bp.route('/<int:semester_class_id>/item/<int:item_id>/delete', methods=['POST'])
+def handle_class_item_delete(semester_class_id, item_id):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                    DELETE FROM semester_class_item WHERE semester_class_id = ? AND id = ?
+                """, (semester_class_id, item_id))
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
