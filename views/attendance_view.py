@@ -49,9 +49,9 @@ def statistics():
 
             executor.submit(execute, new_id, req_data)
 
-            return jsonify({"success": "统计任务已成功创建", "id": new_id})
+            return jsonify({"success": True, "id": new_id})
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
 
 @attendance_bp.route('/statistics/<int:id>', methods=['GET'])
@@ -70,7 +70,7 @@ def get_statistics_by_id(id):
         conn.close()
 
         if row is None:
-            return jsonify({"error": f"未找到ID为 {id} 的数据"}), 404
+            return jsonify({"success": False, "error": f"未找到ID为 {id} 的数据"}), 404
         else:
             result_dict = dict(row)
             if result_dict.get('params'):
@@ -81,7 +81,7 @@ def get_statistics_by_id(id):
             return jsonify(result_dict)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @attendance_bp.route('/statistics/<int:id>/captcha', methods=['POST'])
@@ -92,11 +92,11 @@ def update_captcha(id):
     try:
         req_data = request.get_json()
         if not req_data:
-            return jsonify({"error": "Request body 不能为空"}), 400
+            return jsonify({"success": False, "error": "Request body 不能为空"}), 400
 
         captcha = req_data.get('captcha')
         if not captcha:
-            return jsonify({"error": "请求中必须包含 'captcha' 字段"}), 400
+            return jsonify({"success": False, "error": "请求中必须包含 'captcha' 字段"}), 400
 
         now = datetime.now()
         conn = sqlite3.connect(DB_FILE)
@@ -110,14 +110,14 @@ def update_captcha(id):
 
         if cursor.rowcount == 0:
             conn.close()
-            return jsonify({"error": f"未找到ID为 {id} 的数据"}), 404
+            return jsonify({"success": False, "error": f"未找到ID为 {id} 的数据"}), 404
 
         conn.commit()
         conn.close()
 
-        return jsonify({"success": f"ID为 {id} 的记录验证码更新成功"})
+        return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 def execute(_id, req_data):

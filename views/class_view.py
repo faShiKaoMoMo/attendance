@@ -38,7 +38,7 @@ def handle_class_data():
             else:
                 return jsonify({})
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
     if request.method == 'POST':
         try:
@@ -63,4 +63,4 @@ def handle_class_data():
 
             return jsonify({"success": True})
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
