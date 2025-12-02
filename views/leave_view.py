@@ -76,7 +76,7 @@ def handle_add_request():
         conn.commit()
         conn.close()
 
-        return jsonify({"success": True, "message": "出差记录新增成功", "id": _id})
+        return jsonify({"success": True, "message": "请假记录新增成功", "id": _id})
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -105,7 +105,7 @@ def handle_update_request():
         conn.commit()
         conn.close()
 
-        return jsonify({"success": True, "message": "出差记录更新成功"})
+        return jsonify({"success": True, "message": "请假记录更新成功"})
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
