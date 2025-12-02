@@ -55,7 +55,7 @@ def handle_request_count():
 def handle_add_request():
     try:
         req_data = request.get_json()
-        user_name = req_data.get("user_name")
+        name = req_data.get("name")
         start_date = req_data.get("start_date")
         end_date = req_data.get("end_date")
         description = req_data.get("description")
@@ -66,10 +66,10 @@ def handle_add_request():
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO leave (user_name, start_date, end_date, 
+            INSERT INTO leave (name, start_date, end_date, 
             status, description, create_date, update_date)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (user_name, start_date, end_date,
+            """, (name, start_date, end_date,
                   status, description, now, now))
 
         _id = cursor.lastrowid
@@ -87,7 +87,7 @@ def handle_update_request():
     try:
         req_data = request.get_json()
         _id = req_data.get("id")
-        user_name = req_data.get("user_name")
+        name = req_data.get("name")
         start_date = req_data.get("start_date")
         end_date = req_data.get("end_date")
         description = req_data.get("description")
@@ -99,9 +99,9 @@ def handle_update_request():
 
         cursor.execute("""
             UPDATE leave
-            SET user_name=?, start_date=?, end_date=?, status=?, description=?, update_date=?
+            SET name=?, start_date=?, end_date=?, status=?, description=?, update_date=?
             WHERE id=?
-            """, (user_name, start_date, end_date, status, description, now, _id))
+            """, (name, start_date, end_date, status, description, now, _id))
         conn.commit()
         conn.close()
 

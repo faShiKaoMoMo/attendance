@@ -2,10 +2,12 @@ import sqlite3
 from datetime import datetime
 
 # 1. 连接数据库（没有的话会自动创建）
-conn = sqlite3.connect("attendance.db")  # 换成你的数据库文件名
+conn = sqlite3.connect("attendance.db")
 cursor = conn.cursor()
 
-# 课表
+
+
+################################################## 课表
 cursor.execute('DROP TABLE IF EXISTS "class";')
 
 cursor.execute("""
@@ -70,16 +72,36 @@ cursor.execute("""
     datetime.now().strftime("%Y-%m-%d")
 ))
 
-# 调课表
-cursor.execute('DROP TABLE IF EXISTS "travel";')
 
-# 出差表
+
+################################################## 调课表
+# cursor.execute('DROP TABLE IF EXISTS "semester_class";')
+#
+# cursor.execute("""
+# CREATE TABLE "semester_class" (
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+#     name TEXT,
+#     destination TEXT,
+#     reason TEXT,
+#     start_date DATE,
+#     end_date DATE,
+#     status INTEGER,
+#     avg_working_hours DECIMAL,
+#     description TEXT,
+#     create_date TIMESTAMP,
+#     update_date TIMESTAMP
+# );
+# """)
+
+
+
+################################################## 出差表
 cursor.execute('DROP TABLE IF EXISTS "travel";')
 
 cursor.execute("""
 CREATE TABLE "travel" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_name TEXT,
+    name TEXT,
     destination TEXT,
     reason TEXT,
     start_date DATE,
@@ -102,17 +124,19 @@ test_travel_data = [
 ]
 
 cursor.executemany("""
-    INSERT INTO travel (user_name, destination, reason, start_date, end_date, status, avg_working_hours, description, create_date, update_date)
+    INSERT INTO travel (name, destination, reason, start_date, end_date, status, avg_working_hours, description, create_date, update_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """, test_travel_data)
 
-# 请假表
+
+
+################################################## 请假表
 cursor.execute('DROP TABLE IF EXISTS "leave";')
 
 cursor.execute("""
 CREATE TABLE "leave" (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_name TEXT,
+    name TEXT,
     start_date DATE,
     end_date DATE,
     status INTEGER,
@@ -129,14 +153,18 @@ test_leave_data = [
 ]
 
 cursor.executemany("""
-    INSERT INTO leave (user_name, start_date, end_date, status, description, create_date, update_date)
+    INSERT INTO leave (name, start_date, end_date, status, description, create_date, update_date)
     VALUES (?, ?, ?, ?, ?, ?, ?)
 """, test_leave_data)
 
-# cursor.execute("PRAGMA table_info(attendance_token);")
-# print(cursor.fetchall())
 
-# 4. 提交并关闭连接
+
+################################################## 清空爬虫记录
+cursor.execute("""
+    DELETE FROM attendance_statistics
+""")
+
+
+
 conn.commit()
-
 conn.close()

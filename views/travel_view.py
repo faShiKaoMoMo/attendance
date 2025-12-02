@@ -55,7 +55,7 @@ def handle_request_count():
 def handle_add_request():
     try:
         req_data = request.get_json()
-        user_name = req_data.get("user_name")
+        name = req_data.get("name")
         destination = req_data.get("destination")
         reason = req_data.get("reason")
         start_date = req_data.get("start_date")
@@ -69,10 +69,10 @@ def handle_add_request():
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO travel (user_name, destination, reason, start_date, end_date, 
+            INSERT INTO travel (name, destination, reason, start_date, end_date, 
             status, avg_working_hours, description, create_date, update_date)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (user_name, destination, reason, start_date, end_date,
+            """, (name, destination, reason, start_date, end_date,
                   status, avg_working_hours, description, now, now))
 
         _id = cursor.lastrowid
@@ -90,7 +90,7 @@ def handle_update_request():
     try:
         req_data = request.get_json()
         _id = req_data.get("id")
-        user_name = req_data.get("user_name")
+        name = req_data.get("name")
         destination = req_data.get("destination")
         reason = req_data.get("reason")
         start_date = req_data.get("start_date")
@@ -104,9 +104,9 @@ def handle_update_request():
 
         cursor.execute("""
             UPDATE travel
-            SET user_name=?, destination=?, reason=?, start_date=?, end_date=?, status=?, description=?, update_date=?
+            SET name=?, destination=?, reason=?, start_date=?, end_date=?, status=?, description=?, update_date=?
             WHERE id=?
-            """, (user_name, destination, reason, start_date, end_date,
+            """, (name, destination, reason, start_date, end_date,
                   status, description, now, _id))
         conn.commit()
         conn.close()
