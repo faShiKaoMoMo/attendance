@@ -448,7 +448,7 @@ def fetch(conn, cursor, token, req_data):
 
     # 2. 获取出差记录
     cursor.execute("""
-        SELECT user_name, start_date, end_date, avg_working_hours
+        SELECT name, start_date, end_date, avg_working_hours
         FROM "travel"
         WHERE status = 1 
           AND start_date <= ? 
@@ -478,7 +478,7 @@ def fetch(conn, cursor, token, req_data):
 
     # 3. 获取请假记录
     cursor.execute("""
-        SELECT user_name, start_date, end_date
+        SELECT name, start_date, end_date
         FROM "leave"
         WHERE status = 1 
           AND start_date <= ? 
