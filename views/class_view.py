@@ -19,7 +19,7 @@ def handle_class_request():
     try:
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM semester_class ORDER BY id DESC')
+            cursor.execute('SELECT * FROM semester_class ORDER BY start_date ASC')
             rows = cursor.fetchall()
 
         data = []
@@ -57,8 +57,16 @@ def handle_class_add():
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (name, start_date, end_date, 0, now, now))
 
-        return jsonify({"success": True})
+            sem_id = cursor.lastrowid
 
+        return jsonify({
+            "success": True,
+            "id": sem_id,
+            "name": name,
+            "start_date": start_date,
+            "end_date": end_date,
+            "enable": 0
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
