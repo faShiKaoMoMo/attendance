@@ -104,7 +104,7 @@ def handle_update_request():
 
         cursor.execute("""
             UPDATE travel
-            SET user_name=?, destination=?, reason=?, start_date=?, end_date=?, status=?, update_date=?
+            SET user_name=?, destination=?, reason=?, start_date=?, end_date=?, status=?, description=?, update_date=?
             WHERE id=?
             """, (user_name, destination, reason, start_date, end_date,
                   status, description, now, _id))

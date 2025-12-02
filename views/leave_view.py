@@ -27,7 +27,7 @@ def handle_request_count():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute('SELECT status, COUNT(*) as cnt FROM travel GROUP BY status')
+        cursor.execute('SELECT status, COUNT(*) as cnt FROM leave GROUP BY status')
         rows = cursor.fetchall()
         conn.close()
 
@@ -56,12 +56,9 @@ def handle_add_request():
     try:
         req_data = request.get_json()
         user_name = req_data.get("user_name")
-        destination = req_data.get("destination")
-        reason = req_data.get("reason")
         start_date = req_data.get("start_date")
         end_date = req_data.get("end_date")
         description = req_data.get("description")
-        avg_working_hours = req_data.get("avg_working_hours")
         status = req_data.get("status")
         now = datetime.now()
 
@@ -69,11 +66,11 @@ def handle_add_request():
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO travel (user_name, destination, reason, start_date, end_date, 
-            status, avg_working_hours, description, create_date, update_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (user_name, destination, reason, start_date, end_date,
-                  status, avg_working_hours, description, now, now))
+            INSERT INTO leave (user_name, start_date, end_date, 
+            status, description, create_date, update_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (user_name, start_date, end_date,
+                  status, description, now, now))
 
         _id = cursor.lastrowid
         conn.commit()
@@ -91,8 +88,6 @@ def handle_update_request():
         req_data = request.get_json()
         _id = req_data.get("id")
         user_name = req_data.get("user_name")
-        destination = req_data.get("destination")
-        reason = req_data.get("reason")
         start_date = req_data.get("start_date")
         end_date = req_data.get("end_date")
         description = req_data.get("description")
@@ -103,11 +98,10 @@ def handle_update_request():
         cursor = conn.cursor()
 
         cursor.execute("""
-            UPDATE travel
-            SET user_name=?, destination=?, reason=?, start_date=?, end_date=?, status=?, update_date=?
+            UPDATE leave
+            SET user_name=?, start_date=?, end_date=?, status=?, description=?, update_date=?
             WHERE id=?
-            """, (user_name, destination, reason, start_date, end_date,
-                  status, description, now, _id))
+            """, (user_name, start_date, end_date, status, description, now, _id))
         conn.commit()
         conn.close()
 
@@ -128,7 +122,7 @@ def handle_approval_request():
         cursor = conn.cursor()
 
         cursor.execute("""
-                UPDATE travel
+                UPDATE leave
                 SET status=?
                 WHERE id=?
                 """, (status, _id))
@@ -150,7 +144,7 @@ def handle_get_data_by_page():
 
         # 计算总数据量
         total = 0
-        cursor.execute('SELECT COUNT(*) FROM travel')
+        cursor.execute('SELECT COUNT(*) FROM leave')
         total = cursor.fetchone()[0]
 
         pageNo = int(request.args.get("pageNo"))
@@ -158,7 +152,7 @@ def handle_get_data_by_page():
         # 计算偏移量
         offset = (pageNo - 1) * pageSize
         cursor.execute("""
-        SELECT * FROM travel ORDER BY start_date DESC LIMIT ? OFFSET ?
+        SELECT * FROM leave ORDER BY start_date DESC LIMIT ? OFFSET ?
         """, (pageSize, offset))
         rows = cursor.fetchall()
         conn.close()
@@ -186,7 +180,7 @@ def handle_get_data_by_id():
         _id = request.args.get("id")
 
         cursor.execute("""
-        SELECT * FROM travel WHERE id=?
+        SELECT * FROM leave WHERE id=?
         """, (_id,))
         row = cursor.fetchone()
         conn.close()
