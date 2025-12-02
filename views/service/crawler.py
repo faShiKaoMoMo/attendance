@@ -330,6 +330,12 @@ def token(conn, cursor, _id, req_data):
     finally:
         driver.quit()
 
+    # 清空今天之前的缓存
+    cursor.execute(
+        "DELETE FROM attendance_token WHERE date < ?",
+        (today,)
+    )
+    # 写入缓存
     cursor.execute("""
     INSERT INTO attendance_token (account_id, date, token, create_date, update_date)
     VALUES (?, ?, ?, ?, ?)
