@@ -1,17 +1,14 @@
 import json
-import sqlite3
-import time
-import traceback
 import platform
-
+import time
 from datetime import datetime
+
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from seleniumwire import webdriver
 
-from views.constants.constants import *
 from views.enums.enums import *
 
 
