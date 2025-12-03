@@ -217,3 +217,6 @@ def excel(conn, cursor, data, req_data):
         body=email_body,
         attachments=attachments_to_send
     )
+
+    virtual_workbook.seek(0)
+    return virtual_workbook.getvalue()
