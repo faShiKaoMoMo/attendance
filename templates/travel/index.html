@@ -484,7 +484,7 @@
                 }
 
                 row.innerHTML = `
-                    <td>${trip.user_name}</td>
+                    <td>${trip.name}</td>
                     <td>${trip.destination}</td>
                     <td>${formatDate(trip.start_date)}</td>
                     <td>${formatDate(trip.end_date)}</td>
@@ -508,7 +508,7 @@
     // 3. 新增请求
     async function addNewRequest() {
         const newRequest = {
-            'user_name': document.getElementById('user-name').value,
+            'name': document.getElementById('user-name').value,
             'destination': document.getElementById('destination').value,
             'reason': document.getElementById('purpose').value,
             'start_date': document.getElementById('start-date').value,
@@ -558,7 +558,7 @@
 
             const content = document.getElementById('detail-content');
             content.innerHTML = `
-                <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.user_name}</div>
+                <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.name}</div>
                 <div style="margin-bottom:10px"><strong>目的地：</strong> ${trip.destination}</div>
                 <div style="margin-bottom:10px"><strong>出差目的：</strong> ${trip.reason}</div>
                 <div style="margin-bottom:10px"><strong>时间：</strong> ${formatDate(trip.start_date)} 至 ${formatDate(trip.end_date)}</div>

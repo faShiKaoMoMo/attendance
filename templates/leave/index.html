@@ -468,7 +468,7 @@
 
                 // 移除了目的地列
                 row.innerHTML = `
-                    <td>${trip.user_name}</td>
+                    <td>${trip.name}</td>
                     <td>${formatDate(trip.start_date)}</td>
                     <td>${formatDate(trip.end_date)}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
@@ -492,7 +492,7 @@
     async function addNewRequest() {
         // 构建请求对象，已移除的字段传空值，防止后端报错
         const newRequest = {
-            'user_name': document.getElementById('user-name').value,
+            'name': document.getElementById('user-name').value,
             'destination': "", // 前端已移除，传空
             'reason': "",      // 前端已移除，传空
             'start_date': document.getElementById('start-date').value,
@@ -543,7 +543,7 @@
             const content = document.getElementById('detail-content');
             // 移除了目的地、目的、工时的显示
             content.innerHTML = `
-                <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.user_name}</div>
+                <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.name}</div>
                 <div style="margin-bottom:10px"><strong>时间：</strong> ${formatDate(trip.start_date)} 至 ${formatDate(trip.end_date)}</div>
                 <div style="margin-bottom:10px"><strong>状态：</strong> ${statusText}</div>
                 <div style="margin-bottom:10px"><strong>提交时间：</strong> ${formatDate(trip.create_date)}</div>
