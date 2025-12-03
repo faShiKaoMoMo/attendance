@@ -204,7 +204,7 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
     # 1. 初始化结果
     result_person = {'姓名': name}
     total_hours = 0
-    total_valid_days = 0
+    missing_count = 0
 
     # 遍历每一天
     for record_day in record_week:
@@ -212,11 +212,8 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
         day_str = format_datetime(checkin_date)  # 格式为 "09-01"
 
         # 将 checkin_date (如 "20240901") 转为 "2024-09-01"
-        try:
-            current_date_obj = datetime.strptime(str(checkin_date), "%Y%m%d")
-            check_date_str = current_date_obj.strftime("%Y-%m-%d")
-        except:
-            check_date_str = ""
+        current_date_obj = datetime.strptime(str(checkin_date), "%Y%m%d")
+        check_date_str = current_date_obj.strftime("%Y-%m-%d")
 
         if check_date_str in leave_dates:
             # 1. 当天标记为(请假)
@@ -240,13 +237,6 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
                 'eve_in': '(出差)', 'eve_out': '(出差)'
             }
             result_person[day_str] = display_times
-
-            # 2. 考勤时间为0 (不累加到 total_hours)
-
-            # 3. 算上有效出勤
-            total_valid_days += 1
-
-            # 4. 跳过后续常规打卡计算
             continue
 
         # 获取物理打卡时间
@@ -380,9 +370,13 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
         }
         result_person[day_str] = display_times
 
-        # 有效天数
-        if eff_am > 0 and eff_pm > 0:
-            total_valid_days += 1
+        # 统计缺勤次数：上午缺勤 + 下午缺勤
+        weekday = current_date_obj.weekday()
+        if weekday < 5:
+            if eff_am == 0:
+                missing_count += 1
+            if eff_pm == 0:
+                missing_count += 1
 
     # --- 4. 最终统计 (此处只包含“实际出勤”) ---
     total_hours = round(total_hours, 2)
@@ -392,7 +386,7 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
 
     result_person['实际出勤时长'] = total_hours
     result_person['日均考勤时长'] = avg_daily_hours
-    result_person['有效出勤天数'] = total_valid_days
+    result_person['周期缺勤次数'] = missing_count
 
     return result_person
 
