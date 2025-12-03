@@ -30,16 +30,6 @@ def minutes_to_time_str(minutes):
 
 ####################################################################################################
 
-def load_raw_schedule_from_json(filename="schedule.json"):
-    """从指定的JSON文件加载原始课表数据。"""
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        sys.exit(1)  # 退出程序
-    except json.JSONDecodeError:
-        sys.exit(1)  # 退出程序
-
 
 def get_week_type(current_date, ref_date):
     """
@@ -66,60 +56,77 @@ def get_week_type(current_date, ref_date):
     return 'odd' if week_difference % 2 == 0 else 'even'
 
 
-def generate_class_schedule(start_date_str, end_date_str, raw_schedule, semester_start_input, semester_end_input):
+def generate_class_schedule(start_date_str, end_date_str, items, semester_start_input, semester_end_input):
     """
-    根据原始课表数据、日期范围和单双周规则，生成最终的 class_schedule 字典。
-    新增 semester_end_input 用于判断学期是否结束。
+    items: list of dicts, each row from semester_class_item:
+        {
+            "name": "张三",
+            "week": 0,
+            "slot": "08:00 - 09:40",
+            "type": "all/odd/even"
+        }
     """
     class_schedule = {}
     start_date = datetime.strptime(start_date_str, "%Y%m%d")
     end_date = datetime.strptime(end_date_str, "%Y%m%d")
 
-    # --- 处理开学基准时间 (Start) ---
-    ref_date = datetime(2025, 9, 1)  # 默认值
+    # 学期起止
+    ref_date = datetime(2025, 9, 1)
     if semester_start_input:
         ref_date = parse_flexible_date(semester_start_input, ref_date)
 
-    # --- 处理学期结束时间 (End) ---
-    # 默认为很久以后，确保如果不传结束时间，默认课程一直有效
     ref_end_date = datetime(2099, 12, 31)
     if semester_end_input:
         ref_end_date = parse_flexible_date(semester_end_input, ref_end_date)
 
+    # 解析 slot 一次，提高性能
+    parsed_items = []
+    for it in items:
+        try:
+            start_t, end_t = [t.strip() for t in it["slot"].split("-")]
+        except:
+            continue
+        parsed_items.append({
+            "name": it["name"],
+            "week": int(it["week"]),
+            "start": start_t,
+            "end": end_t,
+            "type": it["type"]
+        })
+
+    # 开始按天生成课表
     current_date = start_date
     while current_date <= end_date:
-        # 【关键修改】如果当前统计日期 已经超过了 学期结束日期，则跳过生成课程
-        # 注意：这里比较的是 datetime 对象
+
         if current_date > ref_end_date:
-            current_date += timedelta(days=1)
-            continue
+            break
 
         weekday = current_date.weekday()
-
-        if weekday > 4:  # 周六周日跳过
+        if weekday >= 5:     # 跳过周末
             current_date += timedelta(days=1)
             continue
 
-        # 传入计算出的 ref_date
         week_type = get_week_type(current_date, ref_date)
+        date_key = current_date.strftime("%Y%m%d")
 
-        # 从JSON加载的key是字符串"0", "1"等
-        day_schedule = raw_schedule.get(str(weekday), [])
+        for it in parsed_items:
+            if it["week"] != weekday:
+                continue
 
-        for course in day_schedule:
-            start_time, end_time = course['time']
+            # 单双周匹配
+            if it["type"] != "all" and it["type"] != week_type:
+                continue
 
-            for person_name, required_week_type in course['names']:
-                if required_week_type == 'all' or required_week_type == week_type:
-                    date_key = current_date.strftime("%Y%m%d")
-                    course_info = {'start': start_time, 'end': end_time}
+            # 写入结构
+            person = it["name"]
+            course_info = {
+                "start": it["start"],
+                "end": it["end"]
+            }
 
-                    if person_name not in class_schedule:
-                        class_schedule[person_name] = {}
-                    if date_key not in class_schedule[person_name]:
-                        class_schedule[person_name][date_key] = []
-
-                    class_schedule[person_name][date_key].append(course_info)
+            class_schedule.setdefault(person, {})
+            class_schedule[person].setdefault(date_key, [])
+            class_schedule[person][date_key].append(course_info)
 
         current_date += timedelta(days=1)
 
@@ -435,16 +442,32 @@ def fetch(conn, cursor, token, req_data):
     end_date_format = datetime.strptime(end_date, "%Y%m%d").date()
 
     # 1. 获取课表和开学时间
-    cursor.execute('SELECT content, start_date, end_date FROM `class` ORDER BY id DESC LIMIT 1')
-    rows = cursor.fetchone()
-    raw_schedule = {}
-    semester_start = None
-    semester_end = None
-    if rows:
-        raw_schedule = json.loads(rows[0]) if rows[0] else {}
-        semester_start = rows[1]
-        semester_end = rows[2]
-    class_info = generate_class_schedule(start_date, end_date, raw_schedule, semester_start, semester_end)
+    cursor.execute("""
+        SELECT id, start_date, end_date
+        FROM semester_class
+        WHERE enable = 1
+        ORDER BY id DESC LIMIT 1
+    """)
+    row = cursor.fetchone()
+
+    semester_id = row["id"]
+    semester_start = row["start_date"]
+    semester_end = row["end_date"]
+
+    cursor.execute("""
+        SELECT name, week, slot, type
+        FROM semester_class_item
+        WHERE semester_class_id = ?
+    """, (semester_id,))
+    items = [dict(r) for r in cursor.fetchall()]
+
+    class_info = generate_class_schedule(
+        start_date,
+        end_date,
+        items,
+        semester_start,
+        semester_end
+    )
 
     # 2. 获取出差记录
     cursor.execute("""
