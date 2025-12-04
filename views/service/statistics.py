@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 
 import requests
 
+from views.enums.enums import ClassTypeEnum
+
 
 def format_datetime(date_str):
     date_obj = datetime.strptime(date_str, "%Y%m%d")
@@ -53,7 +55,7 @@ def get_week_type(current_date, ref_date):
     # 保持原有逻辑风格：
     week_difference = current_week - ref_week
 
-    return 'odd' if week_difference % 2 == 0 else 'even'
+    return ClassTypeEnum.ODD.code if week_difference % 2 == 0 else ClassTypeEnum.EVEN.code
 
 
 def generate_class_schedule(start_date_str, end_date_str, items, semester_start_input, semester_end_input):
@@ -114,7 +116,7 @@ def generate_class_schedule(start_date_str, end_date_str, items, semester_start_
                 continue
 
             # 单双周匹配
-            if it["type"] != "all" and it["type"] != week_type:
+            if it["type"] != ClassTypeEnum.ALL.code and it["type"] != week_type:
                 continue
 
             # 写入结构

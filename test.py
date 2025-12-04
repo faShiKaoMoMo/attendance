@@ -293,10 +293,22 @@ CREATE TABLE calendar_override (
 cursor.execute("""
 CREATE INDEX idx_calendar_override_date ON calendar_override(date);
 """)
+
 cursor.execute("""
-CREATE INDEX idx_calendar_override_swap_date ON calendar_override(swap_date);
+INSERT INTO calendar_override (date, type, description) VALUES
+    ('2025-10-01', 'holiday', '国庆节、中秋节放假'),
+    ('2025-10-02', 'holiday', '国庆节、中秋节放假'),
+    ('2025-10-03', 'holiday', '国庆节、中秋节放假'),
+    ('2025-10-06', 'holiday', '国庆节、中秋节放假');
 """)
 
+cursor.execute("""
+INSERT INTO calendar_override (date, type, swap_date, description) VALUES
+    ('2025-09-28', 'swap', '2024-10-07', '国庆节、中秋节放假调休'),
+    ('2025-10-07', 'swap', '2024-09-28', '国庆节、中秋节放假调休'),
+    ('2025-10-08', 'swap', '2024-10-11', '国庆节、中秋节放假调休'),
+    ('2025-10-11', 'swap', '2024-10-08', '国庆节、中秋节放假调休');
+""")
 
 
 ################################################## 清空爬虫记录

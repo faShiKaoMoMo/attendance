@@ -20,3 +20,22 @@ class ApprovalEnum(Enum):
     @property
     def code(self) -> int:
         return self.value
+
+
+class ClassTypeEnum(Enum):
+    ALL = "all"
+    ODD = "odd"
+    EVEN = "even"
+
+    @property
+    def code(self) -> str:
+        return self.value
+
+
+class CalendarTypeEnum(Enum):
+    HOLIDAY = "holiday"  # 放假
+    SWAP = "调休"  # 调休
+
+    @property
+    def code(self) -> str:
+        return self.value
