@@ -265,6 +265,48 @@ def list_calendar_data():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@config_bp.route('/calendar/range', methods=['GET'])
+def get_calendar_range():
+    """
+    根据年份和月份获取当月的考勤配置
+    前端请求示例: /config/calendar/range?year=2023&month=12
+    """
+    try:
+        year = request.args.get('year')
+        month = request.args.get('month')
+
+        if not year or not month:
+            return jsonify({"success": False, "error": "缺少年份(year)或月份(month)参数"}), 400
+
+        month_str = f"{int(month):02d}"
+        date_pattern = f"{year}-{month_str}-%"
+
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # 使用 LIKE 语句匹配 yyyy-mm-dd 格式的日期
+            # 这里的 % 是通配符，匹配当月的所有天数
+            cursor.execute("""
+                SELECT * FROM calendar_override
+                WHERE date LIKE ?
+                ORDER BY date ASC
+            """, (date_pattern,))
+
+            rows = cursor.fetchall()
+
+        data_list = [dict(row) for row in rows]
+
+        return jsonify({
+            "success": True,
+            "list": data_list
+        })
+
+    except Exception as e:
+        print(f"Error getting calendar range: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @config_bp.route('/calendar/add', methods=['POST'])
 def add_calendar_data():
     """

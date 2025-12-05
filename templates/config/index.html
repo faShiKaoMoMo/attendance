@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考勤配置</title>
     <style>
-        /* --- 保持风格不变 --- */
+        /* --- 全局基础样式 (保持不变) --- */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2980b9;
             --success-color: #27ae60;
             --danger-color: #e74c3c;
+            --warning-color: #f39c12; /* 新增警告色用于调课 */
             --border-color: #dee2e6;
             --light-bg: #f8f9fa;
             --text-color: #333;
@@ -46,18 +47,16 @@
             color: white;
             padding: 20px 30px;
             text-align: center;
-
             position: relative;
         }
 
         .back-link {
-            position: absolute; /* 绝对定位 */
-            left: 30px; /* 距离左边 30px */
-            top: 50%; /* 垂直居中 */
-            transform: translateY(-50%); /* 修正垂直居中偏移 */
-
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
             text-decoration: none;
-            color: rgba(255, 255, 255, 0.9); /* 使用白色半透明，适配蓝色背景 */
+            color: rgba(255, 255, 255, 0.9);
             font-size: 18px;
             font-weight: 500;
             transition: var(--transition);
@@ -66,8 +65,8 @@
         }
 
         .back-link:hover {
-            color: #ffffff; /* 悬停时变为纯白 */
-            transform: translateY(-50%) translateX(-3px); /* 悬停时向左微动效果 */
+            color: #ffffff;
+            transform: translateY(-50%) translateX(-3px);
         }
 
         h1 {
@@ -127,6 +126,7 @@
             display: flex;
         }
 
+        /* --- 通用控件 --- */
         .controls {
             display: flex;
             justify-content: flex-end;
@@ -152,7 +152,7 @@
             transform: translateY(-2px);
         }
 
-        /* --- 表格样式 --- */
+        /* --- 表格样式 (用于实验室和账号) --- */
         .table-container {
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -192,7 +192,6 @@
             vertical-align: middle;
         }
 
-        /* 输入控件统一 */
         .styled-table input, .styled-table select {
             width: 100%;
             height: 36px;
@@ -205,27 +204,11 @@
             transition: border-color 0.2s;
         }
 
-        .styled-table input:focus, .styled-table select:focus {
+        .styled-table input:focus {
             outline: none;
             border-color: var(--primary-color);
         }
 
-        /* --- 针对日期输入的优化样式 --- */
-        .styled-table input:disabled {
-            background-color: #e9ecef;
-            cursor: not-allowed;
-            color: #999;
-        }
-
-        /* 针对调课日期的特殊处理：禁用时变成透明，完全隐藏边框和背景 */
-        .styled-table input.inp-swap-date:disabled {
-            background-color: transparent;
-            border-color: transparent;
-            color: transparent;
-            cursor: default;
-        }
-
-        /* 操作按钮 */
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -247,21 +230,10 @@
             background-color: var(--success-color);
         }
 
-        .save-row-btn:hover {
-            background-color: #219653;
-            transform: translateY(-1px);
-        }
-
         .delete-row-btn {
             background-color: var(--danger-color);
         }
 
-        .delete-row-btn:hover {
-            background-color: #c0392b;
-            transform: translateY(-1px);
-        }
-
-        /* --- 分页控件 --- */
         .pagination-container {
             display: flex;
             justify-content: flex-end;
@@ -269,11 +241,6 @@
             gap: 15px;
             padding-top: 10px;
             border-top: 1px solid var(--border-color);
-        }
-
-        .page-info {
-            font-size: 14px;
-            color: #666;
         }
 
         .page-btn {
@@ -285,17 +252,118 @@
             color: var(--primary-color);
         }
 
-        .page-btn:hover:not(:disabled) {
+        /* ==================== 📅 新增日历相关样式 ==================== */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 24px; /* 标题也加大 */
+            font-weight: bold;
+        }
+
+        .calendar-nav-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px; /* 按钮文字加大 */
+            transition: all 0.2s;
+        }
+
+        .calendar-nav-btn:hover {
             background-color: var(--light-bg);
+            color: var(--primary-color);
             border-color: var(--primary-color);
         }
 
-        .page-btn:disabled {
-            color: #ccc;
-            cursor: not-allowed;
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
-        /* --- 弹窗 --- */
+        .calendar-day-header {
+            background-color: #f1f3f5;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            color: #495057;
+            font-size: 18px; /* 星期表头加大 */
+        }
+
+        .calendar-cell {
+            background-color: white;
+            min-height: 120px; /* 格子高度增加，容纳大字体 */
+            padding: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* 改为从上到下排列 */
+            gap: 8px;
+        }
+
+        .calendar-cell:hover {
+            background-color: #f8faff;
+        }
+
+        .calendar-cell.other-month {
+            background-color: #fafafa;
+            color: #adb5bd;
+            pointer-events: none;
+        }
+
+        .calendar-cell.today {
+            background-color: #e8f4fd;
+        }
+
+        .day-number {
+            font-size: 18px; /* 日期数字加大 (原18px) */
+            font-weight: 700;
+            margin-bottom: 5px;
+            line-height: 1;
+        }
+
+        /* 标签样式优化 */
+        .event-badge {
+            font-size: 14px; /* 标签文字加大 (原12px) */
+            padding: 6px 10px;
+            border-radius: 6px;
+            color: white;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 颜色修改：放假用绿色，调课用橙色 */
+        .badge-holiday {
+            background-color: #27ae60;
+        }
+
+        /* 鲜艳的绿色 */
+        .badge-swap {
+            background-color: #e67e22;
+        }
+
+        /* 鲜艳的橙色 */
+
+        .event-desc {
+            font-size: 14px; /* 备注文字加大 */
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* 模态框样式增强 */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -312,23 +380,67 @@
 
         .modal-content {
             background: white;
-            padding: 30px 40px;
+            padding: 30px;
             border-radius: 12px;
-            text-align: center;
-            min-width: 320px;
+            width: 450px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: left;
         }
 
-        .modal-buttons button {
-            padding: 10px 25px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+        }
+
+        .modal-footer {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 20px;
+            border: none;
+            font-size: 14px;
+            color: white;
         }
 
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+        }
+
+        /* 旋转加载动画 */
         .spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid var(--primary-color);
@@ -336,7 +448,7 @@
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            margin: 0 auto;
         }
 
         @keyframes spin {
@@ -345,29 +457,6 @@
             }
             100% {
                 transform: rotate(360deg);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .styled-table {
-                min-width: 800px;
-            }
-
-            .table-container {
-                overflow-x: auto;
-            }
-
-            .back-link {
-                position: static;
-                display: block;
-                transform: none;
-                text-align: left;
-                margin-bottom: 10px;
-                color: rgba(255, 255, 255, 0.9);
-            }
-
-            .back-link:hover {
-                transform: translateX(-3px);
             }
         }
     </style>
@@ -384,12 +473,12 @@
     <div class="tabs-nav">
         <button class="tab-btn active" onclick="switchTab('lab')">实验室配置</button>
         <button class="tab-btn" onclick="switchTab('account')">账号配置</button>
-        <button class="tab-btn" onclick="switchTab('calendar')">调课配置</button>
+        <button class="tab-btn" onclick="switchTab('calendar')">调课日历</button>
     </div>
 
     <div class="tab-content-wrapper">
 
-        <!-- 1. 实验室配置 -->
+        <!-- 1. 实验室配置 (保持不变) -->
         <div id="lab-tab" class="tab-pane active">
             <div class="controls">
                 <button onclick="addRow('lab')" class="add-btn">＋ 新增实验室</button>
@@ -398,9 +487,9 @@
                 <table class="styled-table">
                     <thead>
                     <tr>
-                        <th style="width: 20%;">配置名称</th>
-                        <th style="width: 20%;">实验室名称</th>
-                        <th style="width: 40%;">排除人员 (逗号分隔)</th>
+                        <th style="width: 15%;">校区</th>
+                        <th style="width: 15%;">实验室</th>
+                        <th style="width: 50%;">排除人员 (逗号分隔)</th>
                         <th style="width: 20%;">操作</th>
                     </tr>
                     </thead>
@@ -410,7 +499,7 @@
             <div class="pagination-container" id="lab-pagination"></div>
         </div>
 
-        <!-- 2. 账号配置 -->
+        <!-- 2. 账号配置 (保持不变) -->
         <div id="account-tab" class="tab-pane">
             <div class="controls">
                 <button onclick="addRow('account')" class="add-btn">＋ 新增账号</button>
@@ -419,10 +508,10 @@
                 <table class="styled-table">
                     <thead>
                     <tr>
-                        <th style="width: 15%;">姓名</th>
-                        <th style="width: 20%;">手机号</th>
-                        <th style="width: 20%;">密码</th>
-                        <th style="width: 25%;">邮箱 (逗号分隔)</th>
+                        <th style="width: 10%;">姓名</th>
+                        <th style="width: 10%;">手机号</th>
+                        <th style="width: 30%;">密码</th>
+                        <th style="width: 30%;">邮箱 (逗号分隔)</th> <!-- 给予最大空间 -->
                         <th style="width: 20%;">操作</th>
                     </tr>
                     </thead>
@@ -432,35 +521,82 @@
             <div class="pagination-container" id="account-pagination"></div>
         </div>
 
-        <!-- 3. 日历调休 -->
+        <!-- 3. 日历调休 (全新设计) -->
         <div id="calendar-tab" class="tab-pane">
-            <div class="controls">
-                <button onclick="addRow('calendar')" class="add-btn">＋ 新增日历配置</button>
+            <!-- 日历头部导航 -->
+            <div class="calendar-header">
+                <button class="calendar-nav-btn" onclick="changeMonth(-1)">❮</button>
+                <span id="current-month-display">2023 年 12 月</span>
+                <button class="calendar-nav-btn" onclick="changeMonth(1)">❯</button>
             </div>
-            <div class="table-container">
-                <table class="styled-table">
-                    <thead>
-                    <tr>
-                        <th style="width: 20%;">日期</th>
-                        <th style="width: 15%;">类型</th>
-                        <th style="width: 20%;">调课日期</th>
-                        <th style="width: 25%;">备注说明</th>
-                        <th style="width: 20%;">操作</th>
-                    </tr>
-                    </thead>
-                    <tbody id="calendar-list"></tbody>
-                </table>
+
+            <!-- 日历网格 -->
+            <div class="calendar-grid">
+                <!-- 星期表头 -->
+                <div class="calendar-day-header">周日</div>
+                <div class="calendar-day-header">周一</div>
+                <div class="calendar-day-header">周二</div>
+                <div class="calendar-day-header">周三</div>
+                <div class="calendar-day-header">周四</div>
+                <div class="calendar-day-header">周五</div>
+                <div class="calendar-day-header">周六</div>
+
+                <!-- JS将在这里动态插入日期格子 -->
+                <div id="calendar-body" style="display: contents;"></div>
             </div>
-            <div class="pagination-container" id="calendar-pagination"></div>
         </div>
 
     </div>
 </div>
 
-<div id="modal" class="modal-overlay">
+<!-- 通用提示框 (Loading/Success/Error) -->
+<div id="msg-modal" class="modal-overlay">
+    <div class="modal-content" style="text-align: center; width: 320px;">
+        <div id="msg-body"></div>
+        <div id="msg-buttons" style="margin-top: 20px;"></div>
+    </div>
+</div>
+
+<!-- 📅 日历编辑弹窗 -->
+<div id="calendar-edit-modal" class="modal-overlay">
     <div class="modal-content">
-        <div id="modal-body"></div>
-        <div class="modal-buttons" id="modal-buttons"></div>
+        <div class="modal-title" id="cal-modal-title">配置详情</div>
+        <input type="hidden" id="cal-id">
+        <input type="hidden" id="cal-date">
+
+        <div class="form-group">
+            <label>日期</label>
+            <input type="text" id="cal-display-date" disabled style="background-color: #e9ecef;">
+        </div>
+
+        <div class="form-group">
+            <label>类型</label>
+            <select id="cal-type" onchange="toggleSwapDate()">
+                <option value="holiday">放假</option>
+                <option value="swap">调课</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="group-swap-date" style="display: none;">
+            <label>调课补班日期 (即当天要上哪一天的课)</label>
+            <input type="date" id="cal-swap-date">
+            <small style="color: #666;">例如：10月7日上班，补的是10月5日的课</small>
+        </div>
+
+        <div class="form-group">
+            <label>备注说明</label>
+            <input type="text" id="cal-desc" placeholder="例如：国庆节放假">
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCalendarModal()">取消</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-danger" id="btn-cal-delete" onclick="deleteCalendarEvent()"
+                        style="display: none;">删除
+                </button>
+                <button class="btn btn-primary" onclick="saveCalendarEvent()">保存</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -470,19 +606,23 @@
         HOLIDAY: {code: 'holiday', label: '放假'},
         SWAP: {code: 'swap', label: '调课'}
     };
-
     const API_BASE = '/config';
 
     // 状态存储
     const state = {
         lab: {pageNo: 1, pageSize: 10, total: 0},
         account: {pageNo: 1, pageSize: 10, total: 0},
-        calendar: {pageNo: 1, pageSize: 10, total: 0}
+        calendar: {
+            year: new Date().getFullYear(),
+            month: new Date().getMonth() + 1, // 1-12
+            events: [] // 存储当前月的事件数据
+        }
     };
 
     // ==================== 初始化 ====================
     document.addEventListener('DOMContentLoaded', () => {
         loadLabData();
+        // 初始不加载日历，等切过去再加载
     });
 
     function switchTab(module) {
@@ -490,6 +630,7 @@
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
         document.getElementById(`${module}-tab`).classList.add('active');
+        // 兼容旧的按钮样式查找
         const btns = document.querySelectorAll('.tab-btn');
         btns.forEach(btn => {
             if (btn.getAttribute('onclick').includes(module)) btn.classList.add('active');
@@ -497,25 +638,22 @@
 
         if (module === 'lab') loadLabData();
         if (module === 'account') loadAccountData();
-        if (module === 'calendar') loadCalendarData();
+        if (module === 'calendar') renderCalendar(); // 切换时渲染日历
     }
 
-    // ==================== 数据加载 (已恢复真实接口) ====================
-
+    // ==================== 1 & 2. 实验室与账号 (列表逻辑保持) ====================
+    // 简略版 Fetch 封装
     async function fetchData(module, endpoint) {
         const {pageNo, pageSize} = state[module];
         try {
             const res = await fetch(`${API_BASE}${endpoint}?pageNo=${pageNo}&pageSize=${pageSize}`);
             const data = await res.json();
-
-            // 假设后端返回结构为: { total: 100, pages: 10, list: [...] }
             state[module].total = data.total;
-            state[module].pages = data.pages;
-
+            state[module].pages = data.pages; // 假设后端返回总页数
             renderList(module, data.list);
             renderPagination(module);
         } catch (e) {
-            showModal('error', `加载数据失败: ${e.message}`);
+            showMsg('error', `加载失败: ${e.message}`);
         }
     }
 
@@ -527,159 +665,291 @@
         fetchData('account', '/account/list');
     }
 
-    function loadCalendarData() {
-        fetchData('calendar', '/calendar/list');
-    }
-
-    // ==================== 渲染列表 ====================
-
     function renderList(module, list) {
         const tbody = document.getElementById(`${module}-list`);
         tbody.innerHTML = '';
-        if (!list || list.length === 0) return;
-
-        list.forEach(item => {
-            const tr = createRowElement(module, item);
-            tbody.appendChild(tr);
-        });
+        if (!list) return;
+        list.forEach(item => tbody.appendChild(createRowElement(module, item)));
     }
 
     function createRowElement(module, data = {}) {
         const tr = document.createElement('tr');
         tr.dataset.id = data.id || '';
-
-        let contentHtml = '';
         const isNew = !data.id;
+        let html = '';
 
         if (module === 'lab') {
-            const excluded = (data.excluded_name || []).join(', ');
-            contentHtml = `
+            html = `
                 <td><input class="inp-name" value="${data.name || ''}" placeholder="例如: 翔安"></td>
-                <td><input class="inp-lab" value="${data.lab || ''}" placeholder="得力e+实验室名称"></td>
-                <td><input class="inp-excluded" value="${excluded}" placeholder="姓名逗号隔开"></td>
-            `;
+                <td><input class="inp-lab" value="${data.lab || ''}" placeholder="实验室名称"></td>
+                <td><input class="inp-excluded" value="${(data.excluded_name || []).join(', ')}" placeholder="姓名逗号隔开"></td>`;
         } else if (module === 'account') {
-            contentHtml = `
+            html = `
                 <td><input class="inp-name" value="${data.name || ''}" placeholder="姓名"></td>
                 <td><input class="inp-mobile" value="${data.mobile || ''}" placeholder="手机号"></td>
-                <td><input class="inp-pwd" type="text" value="${data.password || ''}" placeholder="${isNew ? '必填' : '留空不改'}"></td>
-                <td><input class="inp-email" value="${data.email || ''}" placeholder="邮箱"></td>
-            `;
-        } else if (module === 'calendar') {
-            const currentType = data.type || CALENDAR_TYPES.HOLIDAY.code;
-
-            let options = '';
-            for (const key in CALENDAR_TYPES) {
-                const typeObj = CALENDAR_TYPES[key];
-                const selected = currentType === typeObj.code ? 'selected' : '';
-                options += `<option value="${typeObj.code}" ${selected}>${typeObj.label}</option>`;
-            }
-
-            // 判断是否为调课
-            const isSwap = currentType === CALENDAR_TYPES.SWAP.code;
-
-            // --- 核心修复：如果是调课则用 date，否则用 text 以隐藏占位符 ---
-            const inputType = isSwap ? 'date' : 'text';
-
-            contentHtml = `
-                <td><input type="date" class="inp-date" value="${data.date || ''}"></td>
-                <td><select class="inp-type" onchange="handleTypeChange(this)">${options}</select></td>
-                <td>
-                    <input type="${inputType}" class="inp-swap-date"
-                           value="${data.swap_date || ''}"
-                           ${isSwap ? '' : 'disabled'}>
-                </td>
-                <td><input class="inp-desc" value="${data.description || ''}" placeholder="例如: 国庆节放假"></td>
-            `;
+                 <td><input class="inp-pwd" type="text" value="${data.password || ''}" placeholder="密码"></td>
+                <td><input class="inp-email" value="${data.email || ''}" placeholder="邮箱"></td>`;
         }
 
-        contentHtml += `
-            <td class="action-buttons">
-                <button class="row-btn save-row-btn" onclick="saveData('${module}', this)">保存</button>
-                <button class="row-btn delete-row-btn" onclick="deleteData('${module}', this)">${isNew ? '移除' : '删除'}</button>
-            </td>
-        `;
-
-        tr.innerHTML = contentHtml;
+        html += `<td class="action-buttons">
+                    <button class="row-btn save-row-btn" onclick="saveListData('${module}', this)">保存</button>
+                    <button class="row-btn delete-row-btn" onclick="deleteListData('${module}', this)">${isNew ? '移除' : '删除'}</button>
+                 </td>`;
+        tr.innerHTML = html;
         return tr;
     }
 
     function addRow(module) {
-        const tbody = document.getElementById(`${module}-list`);
-        tbody.prepend(createRowElement(module, {}));
+        document.getElementById(`${module}-list`).prepend(createRowElement(module, {}));
     }
 
-    // ==================== 逻辑处理 (CUD) ====================
-
-    // --- 类型变更联动 (控制日期控件显示) ---
-    function handleTypeChange(selectElem) {
-        const tr = selectElem.closest('tr');
-        const swapInput = tr.querySelector('.inp-swap-date');
-        const val = selectElem.value;
-
-        if (val === CALENDAR_TYPES.SWAP.code) {
-            // 调课：变回日期控件并启用
-            swapInput.type = 'date';
-            swapInput.disabled = false;
-        } else {
-            // 放假：变成文本框并禁用，消除 yyyy/mm/dd
-            swapInput.type = 'text';
-            swapInput.disabled = true;
-            swapInput.value = '';
-        }
-    }
-
-    // --- 保存 (已恢复真实接口) ---
-    async function saveData(module, btn) {
+    // --- 列表保存与删除 (通用) ---
+    async function saveListData(module, btn) {
         const tr = btn.closest('tr');
         const id = tr.dataset.id ? parseInt(tr.dataset.id) : null;
         let payload = {id};
         let url = '';
 
         if (module === 'lab') {
-            const name = tr.querySelector('.inp-name').value.trim();
-            const lab = tr.querySelector('.inp-lab').value.trim();
-            const excludedStr = tr.querySelector('.inp-excluded').value.trim();
-            if (!name || !lab) return showModal('error', '名称和实验室不能为空');
-
-            payload.name = name;
-            payload.lab = lab;
-            payload.excluded_name = excludedStr ? excludedStr.split(/,|，/).map(s => s.trim()).filter(s => s) : [];
+            payload.name = tr.querySelector('.inp-name').value.trim();
+            payload.lab = tr.querySelector('.inp-lab').value.trim();
+            const ex = tr.querySelector('.inp-excluded').value.trim();
+            payload.excluded_name = ex ? ex.split(/,|，/).map(s => s.trim()) : [];
             url = '/lab/add';
-
-        } else if (module === 'account') {
-            const name = tr.querySelector('.inp-name').value.trim();
-            const mobile = tr.querySelector('.inp-mobile').value.trim();
+        } else {
+            payload.name = tr.querySelector('.inp-name').value.trim();
+            payload.mobile = tr.querySelector('.inp-mobile').value.trim();
             const pwd = tr.querySelector('.inp-pwd').value.trim();
-
-            if (!name || !mobile) return showModal('error', '姓名和手机号不能为空');
-            if (!id && !pwd) return showModal('error', '新增账号必须填写密码');
-
-            payload.name = name;
-            payload.mobile = mobile;
-            if (pwd) payload.password = pwd;
             payload.email = tr.querySelector('.inp-email').value.trim();
+            if (pwd) payload.password = pwd;
             url = '/account/add';
-
-        } else if (module === 'calendar') {
-            const date = tr.querySelector('.inp-date').value;
-            const type = tr.querySelector('.inp-type').value;
-            const swapDate = tr.querySelector('.inp-swap-date').value;
-
-            if (!date) return showModal('error', '请选择日期');
-
-            if (type === CALENDAR_TYPES.SWAP.code && !swapDate) {
-                return showModal('error', '选择“调课”类型时，必须指定“调课日期”');
-            }
-
-            payload.date = date;
-            payload.type = type;
-            payload.swap_date = swapDate || null;
-            payload.description = tr.querySelector('.inp-desc').value.trim();
-            url = '/calendar/add';
         }
 
-        showModal('loading', '正在保存...');
+        handleApiRequest(url, payload, () => {
+            if (module === 'lab') loadLabData(); else loadAccountData();
+        });
+    }
+
+    async function deleteListData(module, btn) {
+        const tr = btn.closest('tr');
+        if (!tr.dataset.id) return tr.remove();
+        if (!confirm('确定删除?')) return;
+
+        const url = `${API_BASE}/${module}/${tr.dataset.id}/delete`;
+        // 复用请求逻辑，虽然这里是POST但没body，稍微适配下
+        handleApiRequest(url, {}, () => {
+            if (module === 'lab') loadLabData(); else loadAccountData();
+        });
+    }
+
+    // ==================== 3. 📅 日历核心逻辑 (全新) ====================
+
+    // 切换月份
+    function changeMonth(delta) {
+        let {year, month} = state.calendar;
+        month += delta;
+        if (month > 12) {
+            month = 1;
+            year++;
+        }
+        if (month < 1) {
+            month = 12;
+            year--;
+        }
+        state.calendar.year = year;
+        state.calendar.month = month;
+        renderCalendar();
+    }
+
+    // 渲染日历主入口
+    async function renderCalendar() {
+        const {year, month} = state.calendar;
+
+        // 更新顶部月份显示
+        document.getElementById('current-month-display').innerText = `${year} 年 ${month} 月`;
+        const container = document.getElementById('calendar-body');
+
+        // 显示加载状态
+        container.innerHTML = '<div style="grid-column: 1/-1; padding: 30px; text-align: center; color: #666;">加载中...</div>';
+
+        try {
+            // 请求后端接口获取当月数据
+            const res = await fetch(`${API_BASE}/calendar/range?year=${year}&month=${month}`);
+            const data = await res.json();
+            state.calendar.events = data.list || [];
+        } catch (e) {
+            console.error("加载日历数据失败", e);
+            state.calendar.events = [];
+            // 失败时也可以清空，或者保留空数组让日历渲染出空格子
+        }
+
+        // 清空容器准备渲染
+        container.innerHTML = '';
+
+        // 计算日期逻辑
+        const firstDayOfMonth = new Date(year, month - 1, 1).getDay(); // 当月第一天是周几 (0-6)
+        const daysInMonth = new Date(year, month, 0).getDate(); // 当月有多少天
+        const todayStr = new Date().toISOString().split('T')[0]; // 今天日期 YYYY-MM-DD
+
+        // 1. 补充上个月的空白格子
+        for (let i = 0; i < firstDayOfMonth; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-cell other-month';
+            container.appendChild(cell);
+        }
+
+        // 2. 生成当月的每一天
+        for (let day = 1; day <= daysInMonth; day++) {
+            // 构造日期字符串 YYYY-MM-DD
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+            const cell = document.createElement('div');
+            cell.className = 'calendar-cell';
+
+            // 标记今天
+            if (dateStr === todayStr) cell.classList.add('today');
+
+            // 查找当天是否有配置数据
+            const eventData = state.calendar.events.find(e => e.date === dateStr);
+
+            // 基础HTML：日期数字
+            let contentHtml = `<div class="day-number">${day}</div>`;
+
+            // 如果有配置（放假或调课）
+            if (eventData) {
+                const isHoliday = eventData.type === 'holiday';
+                const badgeClass = isHoliday ? 'badge-holiday' : 'badge-swap';
+                let badgeText = '';
+
+                // --- 标签文字逻辑 ---
+                if (isHoliday) {
+                    badgeText = '放假';
+                } else {
+                    // 调课逻辑：显示补班日期
+                    if (eventData.swap_date) {
+                        const parts = eventData.swap_date.split('-');
+                        // 尝试解析为 M月D日
+                        if (parts.length === 3) {
+                            badgeText = `调课 ${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+                        } else {
+                            badgeText = '调课';
+                        }
+                    } else {
+                        badgeText = '调课 (未设置)';
+                    }
+                }
+
+                // --- 描述文字截断逻辑 (新增) ---
+                const rawDesc = eventData.description || '';
+                let displayDesc = rawDesc;
+
+                // 如果大于12个字符，截取前10个并加省略号
+                if (rawDesc.length > 12) {
+                    displayDesc = rawDesc.substring(0, 10) + '...';
+                }
+
+                // 拼装 HTML
+                // title属性用于鼠标悬停显示完整内容
+                contentHtml += `
+                    <div class="event-badge ${badgeClass}">${badgeText}</div>
+                    ${rawDesc ? `<div class="event-desc">${displayDesc}</div>` : ''}
+                `;
+            }
+
+            cell.innerHTML = contentHtml;
+
+            // 绑定点击事件，打开弹窗
+            cell.onclick = () => openCalendarModal(dateStr, eventData);
+
+            container.appendChild(cell);
+        }
+    }
+
+    // ==================== 📅 日历弹窗逻辑 ====================
+
+    function openCalendarModal(dateStr, eventData) {
+        const modal = document.getElementById('calendar-edit-modal');
+        const title = document.getElementById('cal-modal-title');
+
+        // 填充数据
+        document.getElementById('cal-date').value = dateStr;
+        document.getElementById('cal-display-date').value = dateStr;
+
+        if (eventData) {
+            // 编辑模式
+            title.innerText = '编辑调课配置';
+            document.getElementById('cal-id').value = eventData.id;
+            document.getElementById('cal-type').value = eventData.type;
+            document.getElementById('cal-desc').value = eventData.description || '';
+            document.getElementById('cal-swap-date').value = eventData.swap_date || '';
+            document.getElementById('btn-cal-delete').style.display = 'inline-block';
+        } else {
+            // 新增模式
+            title.innerText = '新增调课配置';
+            document.getElementById('cal-id').value = '';
+            document.getElementById('cal-type').value = 'holiday'; // 默认放假
+            document.getElementById('cal-desc').value = '';
+            document.getElementById('cal-swap-date').value = '';
+            document.getElementById('btn-cal-delete').style.display = 'none';
+        }
+
+        toggleSwapDate(); // 根据当前类型显示/隐藏补班日期
+        modal.style.display = 'flex';
+    }
+
+    function closeCalendarModal() {
+        document.getElementById('calendar-edit-modal').style.display = 'none';
+    }
+
+    function toggleSwapDate() {
+        const type = document.getElementById('cal-type').value;
+        const group = document.getElementById('group-swap-date');
+        group.style.display = (type === 'swap') ? 'block' : 'none';
+    }
+
+    // 保存日历配置
+    async function saveCalendarEvent() {
+        const id = document.getElementById('cal-id').value;
+        const date = document.getElementById('cal-date').value;
+        const type = document.getElementById('cal-type').value;
+        const desc = document.getElementById('cal-desc').value;
+        const swapDate = document.getElementById('cal-swap-date').value;
+
+        // 验证
+        if (type === 'swap' && !swapDate) {
+            alert('调课类型必须选择“补班日期”');
+            return;
+        }
+
+        const payload = {
+            id: id ? parseInt(id) : null,
+            date: date,
+            type: type,
+            description: desc,
+            swap_date: (type === 'swap') ? swapDate : null
+        };
+
+        // 关闭编辑弹窗，显示Loading
+        closeCalendarModal();
+        handleApiRequest('/calendar/add', payload, () => renderCalendar());
+    }
+
+    // 删除日历配置
+    async function deleteCalendarEvent() {
+        const id = document.getElementById('cal-id').value;
+        if (!id) return;
+
+        if (!confirm('确定要删除当天的配置吗？')) return;
+
+        closeCalendarModal();
+        handleApiRequest(`/calendar/${id}/delete`, {}, () => renderCalendar());
+    }
+
+    // ==================== 通用工具 ====================
+
+    // 统一处理 Fetch 请求与反馈
+    async function handleApiRequest(url, payload, onSuccess) {
+        showMsg('loading', '正在处理...');
         try {
             const res = await fetch(API_BASE + url, {
                 method: 'POST',
@@ -689,89 +959,52 @@
             const result = await res.json();
 
             if (result.success) {
-                showModal('success', result.message || '保存成功');
-                // 成功后重新加载数据
-                if (module === 'lab') loadLabData();
-                if (module === 'account') loadAccountData();
-                if (module === 'calendar') loadCalendarData();
+                showMsg('success', result.message || '操作成功');
+                if (onSuccess) onSuccess();
             } else {
-                throw new Error(result.error || '保存失败');
+                throw new Error(result.error || '操作失败');
             }
         } catch (e) {
-            showModal('error', e.message);
+            showMsg('error', e.message);
         }
     }
 
-    // --- 删除 (已恢复真实接口) ---
-    async function deleteData(module, btn) {
-        const tr = btn.closest('tr');
-        const id = tr.dataset.id;
-        if (!id) {
-            tr.remove();
-            return;
-        }
+    // 消息弹窗
+    const msgModal = document.getElementById('msg-modal');
+    const msgBody = document.getElementById('msg-body');
+    const msgBtns = document.getElementById('msg-buttons');
 
-        if (!confirm('确定要永久删除这条记录吗？')) return;
+    function showMsg(type, text) {
+        msgBody.innerHTML = '';
+        msgBtns.innerHTML = '';
+        msgModal.style.display = 'flex';
 
-        showModal('loading', '正在删除...');
-        try {
-            const url = `${API_BASE}/${module}/${id}/delete`;
-            const res = await fetch(url, {method: 'POST'});
-            const result = await res.json();
-
-            if (result.success) {
-                showModal('success', result.message || '删除成功');
-                if (module === 'lab') loadLabData();
-                if (module === 'account') loadAccountData();
-                if (module === 'calendar') loadCalendarData();
-            } else {
-                throw new Error(result.error || '删除失败');
-            }
-        } catch (e) {
-            showModal('error', e.message);
+        if (type === 'loading') {
+            msgBody.innerHTML = `<div class="spinner"></div><p style="margin-top:10px">${text}</p>`;
+        } else {
+            const color = type === 'error' ? 'red' : 'green';
+            msgBody.innerHTML = `<p style="font-size:16px; color:${color}">${text}</p>`;
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary';
+            btn.textContent = '确定';
+            btn.onclick = () => msgModal.style.display = 'none';
+            msgBtns.appendChild(btn);
         }
     }
 
-    // ==================== 分页控件 ====================
-
+    // 分页处理（仅用于列表）
     function renderPagination(module) {
-        const container = document.getElementById(`${module}-pagination`);
         const s = state[module];
-
-        container.innerHTML = `
-            <div class="page-info">共 ${s.total} 条，页码 ${s.pageNo} / ${s.pages || 1}</div>
+        document.getElementById(`${module}-pagination`).innerHTML = `
+            <div style="font-size:14px;color:#666">共 ${s.total} 条，页 ${s.pageNo}/${s.pages || 1}</div>
             <button class="page-btn" ${s.pageNo <= 1 ? 'disabled' : ''} onclick="changePage('${module}', -1)">上一页</button>
             <button class="page-btn" ${s.pageNo >= s.pages ? 'disabled' : ''} onclick="changePage('${module}', 1)">下一页</button>
         `;
     }
 
-    function changePage(module, delta) {
-        state[module].pageNo += delta;
-        if (module === 'lab') loadLabData();
-        if (module === 'account') loadAccountData();
-        if (module === 'calendar') loadCalendarData();
-    }
-
-    // ==================== 模态框 ====================
-    const modal = document.getElementById('modal');
-    const modalBody = document.getElementById('modal-body');
-    const modalButtons = document.getElementById('modal-buttons');
-
-    function showModal(type, msg) {
-        modalBody.innerHTML = '';
-        modalButtons.innerHTML = '';
-        modal.style.display = 'flex';
-
-        if (type === 'loading') {
-            modalBody.innerHTML = `<div class="spinner"></div><p>${msg}</p>`;
-        } else {
-            const color = type === 'error' ? 'red' : 'green';
-            modalBody.innerHTML = `<p style="font-size:16px; margin-top:10px; color:${color}">${msg}</p>`;
-            const btn = document.createElement('button');
-            btn.textContent = '确定';
-            btn.onclick = () => modal.style.display = 'none';
-            modalButtons.appendChild(btn);
-        }
+    function changePage(module, d) {
+        state[module].pageNo += d;
+        if (module === 'lab') loadLabData(); else loadAccountData();
     }
 </script>
 
