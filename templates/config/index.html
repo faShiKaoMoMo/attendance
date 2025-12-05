@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>考勤配置中心</title>
+    <title>考勤配置</title>
     <style>
         /* --- 保持风格不变 --- */
         :root {
@@ -14,92 +14,208 @@
             --border-color: #dee2e6;
             --light-bg: #f8f9fa;
             --text-color: #333;
+            --transition: all 0.3s ease;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; padding: 20px;
-            background-color: #f5f7fa; color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: var(--text-color);
         }
 
         .container {
-            max-width: 1600px; margin: 0 auto;
-            background-color: white; border-radius: 12px;
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            overflow: hidden; min-height: 80vh;
-            display: flex; flex-direction: column;
+            overflow: hidden;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
         }
 
         header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white; padding: 20px 30px;
+            color: white;
+            padding: 20px 30px;
             text-align: center;
+
+            position: relative;
         }
-        h1 { margin: 0; font-size: 24px; }
-        .subtitle { margin-top: 8px; opacity: 0.9; font-size: 16px; }
+
+        .back-link {
+            position: absolute; /* 绝对定位 */
+            left: 30px; /* 距离左边 30px */
+            top: 50%; /* 垂直居中 */
+            transform: translateY(-50%); /* 修正垂直居中偏移 */
+
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9); /* 使用白色半透明，适配蓝色背景 */
+            font-size: 18px;
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .back-link:hover {
+            color: #ffffff; /* 悬停时变为纯白 */
+            transform: translateY(-50%) translateX(-3px); /* 悬停时向左微动效果 */
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            margin-top: 8px;
+            opacity: 0.9;
+            font-size: 16px;
+        }
 
         /* --- 导航栏 --- */
-        .tabs-nav { display: flex; border-bottom: 1px solid var(--border-color); padding: 0 30px; }
+        .tabs-nav {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 30px;
+        }
+
         .tab-btn {
-            padding: 15px 25px; border: none; background: none;
-            font-size: 16px; cursor: pointer; color: #6c757d;
+            padding: 15px 25px;
+            border: none;
+            background: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #6c757d;
             border-bottom: 3px solid transparent;
             transition: all 0.3s;
         }
-        .tab-btn:hover { color: var(--primary-color); background-color: #f8f9fa; }
-        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
 
-        .tab-content-wrapper { padding: 30px; flex-grow: 1; display: flex; flex-direction: column; }
-        .tab-pane { display: none; flex-direction: column; height: 100%; }
-        .tab-pane.active { display: flex; }
+        .tab-btn:hover {
+            color: var(--primary-color);
+            background-color: #f8f9fa;
+        }
 
-        .controls { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tab-content-wrapper {
+            padding: 30px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tab-pane {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .tab-pane.active {
+            display: flex;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+
         .add-btn {
-            padding: 10px 20px; background-color: var(--primary-color); color: white;
-            border: none; border-radius: 6px; cursor: pointer;
-            display: flex; align-items: center; gap: 8px;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
             transition: all 0.2s;
         }
-        .add-btn:hover { background-color: var(--secondary-color); transform: translateY(-2px); }
+
+        .add-btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
 
         /* --- 表格样式 --- */
         .table-container {
-            border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
             flex-grow: 1;
             margin-bottom: 20px;
         }
 
         .styled-table {
-            width: 100%; border-collapse: collapse; background-color: #fff;
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
             table-layout: fixed;
         }
 
         .styled-table th {
-            background-color: var(--light-bg); padding: 12px 15px;
-            text-align: center; font-weight: 600;
-            border-bottom: 2px solid var(--border-color); color: #343a40;
+            background-color: var(--light-bg);
+            padding: 12px 15px;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+            color: #343a40;
         }
 
-        .styled-table tr { border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
-        .styled-table tr:hover { background-color: #f8fafc; }
-        .styled-table td { border: none; padding: 8px 10px; vertical-align: middle; }
+        .styled-table tr {
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s;
+        }
+
+        .styled-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .styled-table td {
+            border: none;
+            padding: 8px 10px;
+            vertical-align: middle;
+        }
 
         /* 输入控件统一 */
         .styled-table input, .styled-table select {
-            width: 100%; height: 36px; padding: 0 10px;
-            border: 1px solid #ced4da; border-radius: 4px;
-            font-size: 14px; color: #495057; display: block;
+            width: 100%;
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #495057;
+            display: block;
             transition: border-color 0.2s;
         }
+
         .styled-table input:focus, .styled-table select:focus {
-            outline: none; border-color: var(--primary-color);
+            outline: none;
+            border-color: var(--primary-color);
         }
 
         /* --- 针对日期输入的优化样式 --- */
-        .styled-table input:disabled { background-color: #e9ecef; cursor: not-allowed; color: #999; }
+        .styled-table input:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            color: #999;
+        }
 
         /* 针对调课日期的特殊处理：禁用时变成透明，完全隐藏边框和背景 */
         .styled-table input.inp-swap-date:disabled {
@@ -110,57 +226,149 @@
         }
 
         /* 操作按钮 */
-        .action-buttons { display: flex; justify-content: center; gap: 8px; }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
         .row-btn {
-            height: 36px; padding: 0 15px; font-size: 13px;
-            border: none; border-radius: 4px; cursor: pointer; color: white;
+            height: 36px;
+            padding: 0 15px;
+            font-size: 13px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
             transition: transform 0.1s;
         }
-        .save-row-btn { background-color: var(--success-color); }
-        .save-row-btn:hover { background-color: #219653; transform: translateY(-1px); }
-        .delete-row-btn { background-color: var(--danger-color); }
-        .delete-row-btn:hover { background-color: #c0392b; transform: translateY(-1px); }
+
+        .save-row-btn {
+            background-color: var(--success-color);
+        }
+
+        .save-row-btn:hover {
+            background-color: #219653;
+            transform: translateY(-1px);
+        }
+
+        .delete-row-btn {
+            background-color: var(--danger-color);
+        }
+
+        .delete-row-btn:hover {
+            background-color: #c0392b;
+            transform: translateY(-1px);
+        }
 
         /* --- 分页控件 --- */
         .pagination-container {
-            display: flex; justify-content: flex-end; align-items: center; gap: 15px;
-            padding-top: 10px; border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
         }
-        .page-info { font-size: 14px; color: #666; }
+
+        .page-info {
+            font-size: 14px;
+            color: #666;
+        }
+
         .page-btn {
-            padding: 6px 12px; background-color: white; border: 1px solid var(--border-color);
-            border-radius: 4px; cursor: pointer; color: var(--primary-color);
+            padding: 6px 12px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--primary-color);
         }
-        .page-btn:hover:not(:disabled) { background-color: var(--light-bg); border-color: var(--primary-color); }
-        .page-btn:disabled { color: #ccc; cursor: not-allowed; }
+
+        .page-btn:hover:not(:disabled) {
+            background-color: var(--light-bg);
+            border-color: var(--primary-color);
+        }
+
+        .page-btn:disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
 
         /* --- 弹窗 --- */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none;
-            justify-content: center; align-items: center; z-index: 999;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
             backdrop-filter: blur(2px);
         }
+
         .modal-content {
-            background: white; padding: 30px 40px; border-radius: 12px;
-            text-align: center; min-width: 320px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            min-width: 320px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
+
         .modal-buttons button {
-            padding: 10px 25px; background: var(--primary-color);
-            color: white; border: none; border-radius: 6px;
-            cursor: pointer; margin-top: 20px;
+            padding: 10px 25px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
         }
+
         .spinner {
-            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color);
-            border-radius: 50%; width: 40px; height: 40px;
-            animation: spin 1s linear infinite; margin: 0 auto 20px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
 
         @media (max-width: 768px) {
-            .styled-table { min-width: 800px; }
-            .table-container { overflow-x: auto; }
+            .styled-table {
+                min-width: 800px;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .back-link {
+                position: static;
+                display: block;
+                transform: none;
+                text-align: left;
+                margin-bottom: 10px;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .back-link:hover {
+                transform: translateX(-3px);
+            }
         }
     </style>
 </head>
@@ -168,7 +376,8 @@
 
 <div class="container">
     <header>
-        <h1>考勤配置中心</h1>
+        <a href="{{ url_for('home') }}" class="back-link">🏠 返回首页</a>
+        <h1>考勤配置</h1>
         <div class="subtitle">管理考勤配置与参数</div>
     </header>
 
@@ -182,7 +391,9 @@
 
         <!-- 1. 实验室配置 -->
         <div id="lab-tab" class="tab-pane active">
-            <div class="controls"><button onclick="addRow('lab')" class="add-btn">＋ 新增实验室</button></div>
+            <div class="controls">
+                <button onclick="addRow('lab')" class="add-btn">＋ 新增实验室</button>
+            </div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
@@ -201,7 +412,9 @@
 
         <!-- 2. 账号配置 -->
         <div id="account-tab" class="tab-pane">
-            <div class="controls"><button onclick="addRow('account')" class="add-btn">＋ 新增账号</button></div>
+            <div class="controls">
+                <button onclick="addRow('account')" class="add-btn">＋ 新增账号</button>
+            </div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
@@ -221,7 +434,9 @@
 
         <!-- 3. 日历调休 -->
         <div id="calendar-tab" class="tab-pane">
-            <div class="controls"><button onclick="addRow('calendar')" class="add-btn">＋ 新增日历配置</button></div>
+            <div class="controls">
+                <button onclick="addRow('calendar')" class="add-btn">＋ 新增日历配置</button>
+            </div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
@@ -252,17 +467,17 @@
 <script>
     // ==================== 常量定义 ====================
     const CALENDAR_TYPES = {
-        HOLIDAY: { code: 'holiday', label: '放假' },
-        SWAP:    { code: 'swap',    label: '调课' }
+        HOLIDAY: {code: 'holiday', label: '放假'},
+        SWAP: {code: 'swap', label: '调课'}
     };
 
     const API_BASE = '/config';
 
     // 状态存储
     const state = {
-        lab: { pageNo: 1, pageSize: 10, total: 0 },
-        account: { pageNo: 1, pageSize: 10, total: 0 },
-        calendar: { pageNo: 1, pageSize: 10, total: 0 }
+        lab: {pageNo: 1, pageSize: 10, total: 0},
+        account: {pageNo: 1, pageSize: 10, total: 0},
+        calendar: {pageNo: 1, pageSize: 10, total: 0}
     };
 
     // ==================== 初始化 ====================
@@ -277,7 +492,7 @@
         document.getElementById(`${module}-tab`).classList.add('active');
         const btns = document.querySelectorAll('.tab-btn');
         btns.forEach(btn => {
-            if(btn.getAttribute('onclick').includes(module)) btn.classList.add('active');
+            if (btn.getAttribute('onclick').includes(module)) btn.classList.add('active');
         });
 
         if (module === 'lab') loadLabData();
@@ -288,7 +503,7 @@
     // ==================== 数据加载 (已恢复真实接口) ====================
 
     async function fetchData(module, endpoint) {
-        const { pageNo, pageSize } = state[module];
+        const {pageNo, pageSize} = state[module];
         try {
             const res = await fetch(`${API_BASE}${endpoint}?pageNo=${pageNo}&pageSize=${pageSize}`);
             const data = await res.json();
@@ -304,9 +519,17 @@
         }
     }
 
-    function loadLabData() { fetchData('lab', '/lab/list'); }
-    function loadAccountData() { fetchData('account', '/account/list'); }
-    function loadCalendarData() { fetchData('calendar', '/calendar/list'); }
+    function loadLabData() {
+        fetchData('lab', '/lab/list');
+    }
+
+    function loadAccountData() {
+        fetchData('account', '/account/list');
+    }
+
+    function loadCalendarData() {
+        fetchData('calendar', '/calendar/list');
+    }
 
     // ==================== 渲染列表 ====================
 
@@ -339,7 +562,7 @@
             contentHtml = `
                 <td><input class="inp-name" value="${data.name || ''}" placeholder="姓名"></td>
                 <td><input class="inp-mobile" value="${data.mobile || ''}" placeholder="手机号"></td>
-                <td><input class="inp-pwd" type="text" value="${data.password || ''}" placeholder="${isNew?'必填':'留空不改'}"></td>
+                <td><input class="inp-pwd" type="text" value="${data.password || ''}" placeholder="${isNew ? '必填' : '留空不改'}"></td>
                 <td><input class="inp-email" value="${data.email || ''}" placeholder="邮箱"></td>
             `;
         } else if (module === 'calendar') {
@@ -410,7 +633,7 @@
     async function saveData(module, btn) {
         const tr = btn.closest('tr');
         const id = tr.dataset.id ? parseInt(tr.dataset.id) : null;
-        let payload = { id };
+        let payload = {id};
         let url = '';
 
         if (module === 'lab') {
@@ -421,7 +644,7 @@
 
             payload.name = name;
             payload.lab = lab;
-            payload.excluded_name = excludedStr ? excludedStr.split(/,|，/).map(s=>s.trim()).filter(s=>s) : [];
+            payload.excluded_name = excludedStr ? excludedStr.split(/,|，/).map(s => s.trim()).filter(s => s) : [];
             url = '/lab/add';
 
         } else if (module === 'account') {
@@ -434,7 +657,7 @@
 
             payload.name = name;
             payload.mobile = mobile;
-            if(pwd) payload.password = pwd;
+            if (pwd) payload.password = pwd;
             payload.email = tr.querySelector('.inp-email').value.trim();
             url = '/account/add';
 
@@ -483,14 +706,17 @@
     async function deleteData(module, btn) {
         const tr = btn.closest('tr');
         const id = tr.dataset.id;
-        if (!id) { tr.remove(); return; }
+        if (!id) {
+            tr.remove();
+            return;
+        }
 
         if (!confirm('确定要永久删除这条记录吗？')) return;
 
         showModal('loading', '正在删除...');
         try {
             const url = `${API_BASE}/${module}/${id}/delete`;
-            const res = await fetch(url, { method: 'POST' });
+            const res = await fetch(url, {method: 'POST'});
             const result = await res.json();
 
             if (result.success) {

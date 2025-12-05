@@ -50,6 +50,28 @@
             padding: 20px 30px;
             text-align: center;
             flex-shrink: 0;
+
+            position: relative;
+        }
+
+        .back-link {
+            position: absolute; /* 绝对定位 */
+            left: 30px; /* 距离左边 30px */
+            top: 50%; /* 垂直居中 */
+            transform: translateY(-50%); /* 修正垂直居中偏移 */
+
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.9); /* 使用白色半透明，适配蓝色背景 */
+            font-size: 18px;
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .back-link:hover {
+            color: #ffffff; /* 悬停时变为纯白 */
+            transform: translateY(-50%) translateX(-3px); /* 悬停时向左微动效果 */
         }
 
         h1 {
@@ -513,6 +535,7 @@
 <body>
 <div class="container">
     <header>
+        <a href="{{ url_for('home') }}" class="back-link">🏠 返回首页</a>
         <h1>学生课表</h1>
         <div class="subtitle">管理排课计划与每日安排</div>
     </header>
