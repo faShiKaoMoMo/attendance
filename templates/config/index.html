@@ -97,7 +97,17 @@
         .styled-table input:focus, .styled-table select:focus {
             outline: none; border-color: var(--primary-color);
         }
+
+        /* --- 针对日期输入的优化样式 --- */
         .styled-table input:disabled { background-color: #e9ecef; cursor: not-allowed; color: #999; }
+
+        /* 针对调课日期的特殊处理：禁用时变成透明，完全隐藏边框和背景 */
+        .styled-table input.inp-swap-date:disabled {
+            background-color: transparent;
+            border-color: transparent;
+            color: transparent;
+            cursor: default;
+        }
 
         /* 操作按钮 */
         .action-buttons { display: flex; justify-content: center; gap: 8px; }
@@ -218,7 +228,7 @@
                     <tr>
                         <th style="width: 20%;">日期</th>
                         <th style="width: 15%;">类型</th>
-                        <th style="width: 20%;">调休关联日期</th>
+                        <th style="width: 20%;">调课日期</th>
                         <th style="width: 25%;">备注说明</th>
                         <th style="width: 20%;">操作</th>
                     </tr>
@@ -240,7 +250,7 @@
 </div>
 
 <script>
-    // ==================== 修改：常量定义 (使用字符串) ====================
+    // ==================== 常量定义 ====================
     const CALENDAR_TYPES = {
         HOLIDAY: { code: 'holiday', label: '放假' },
         SWAP:    { code: 'swap',    label: '调课' }
@@ -275,7 +285,7 @@
         if (module === 'calendar') loadCalendarData();
     }
 
-    // ==================== 数据加载 ====================
+    // ==================== 数据加载 (已恢复真实接口) ====================
 
     async function fetchData(module, endpoint) {
         const { pageNo, pageSize } = state[module];
@@ -283,6 +293,7 @@
             const res = await fetch(`${API_BASE}${endpoint}?pageNo=${pageNo}&pageSize=${pageSize}`);
             const data = await res.json();
 
+            // 假设后端返回结构为: { total: 100, pages: 10, list: [...] }
             state[module].total = data.total;
             state[module].pages = data.pages;
 
@@ -332,9 +343,7 @@
                 <td><input class="inp-email" value="${data.email || ''}" placeholder="邮箱"></td>
             `;
         } else if (module === 'calendar') {
-            // --- 修改：下拉框渲染逻辑 ---
-            // 确保 type 是字符串比较
-            const currentType = data.type || CALENDAR_TYPES.HOLIDAY.code; // 默认选中节假日
+            const currentType = data.type || CALENDAR_TYPES.HOLIDAY.code;
 
             let options = '';
             for (const key in CALENDAR_TYPES) {
@@ -343,14 +352,20 @@
                 options += `<option value="${typeObj.code}" ${selected}>${typeObj.label}</option>`;
             }
 
-            // --- 修改：判断是否禁用关联日期 ---
-            // 只有 type === 'swap' 时才启用，否则禁用
+            // 判断是否为调课
             const isSwap = currentType === CALENDAR_TYPES.SWAP.code;
+
+            // --- 核心修复：如果是调课则用 date，否则用 text 以隐藏占位符 ---
+            const inputType = isSwap ? 'date' : 'text';
 
             contentHtml = `
                 <td><input type="date" class="inp-date" value="${data.date || ''}"></td>
                 <td><select class="inp-type" onchange="handleTypeChange(this)">${options}</select></td>
-                <td><input type="date" class="inp-swap-date" value="${data.swap_date || ''}" ${isSwap ? '' : 'disabled'}></td>
+                <td>
+                    <input type="${inputType}" class="inp-swap-date"
+                           value="${data.swap_date || ''}"
+                           ${isSwap ? '' : 'disabled'}>
+                </td>
                 <td><input class="inp-desc" value="${data.description || ''}" placeholder="例如: 国庆节放假"></td>
             `;
         }
@@ -373,23 +388,25 @@
 
     // ==================== 逻辑处理 (CUD) ====================
 
-    // --- 修改：类型变更联动 ---
+    // --- 类型变更联动 (控制日期控件显示) ---
     function handleTypeChange(selectElem) {
         const tr = selectElem.closest('tr');
         const swapInput = tr.querySelector('.inp-swap-date');
-        const val = selectElem.value; // 获取字符串值
+        const val = selectElem.value;
 
         if (val === CALENDAR_TYPES.SWAP.code) {
-            // 如果是调休，启用
+            // 调课：变回日期控件并启用
+            swapInput.type = 'date';
             swapInput.disabled = false;
         } else {
-            // 如果是放假(holiday)，禁用并清空
+            // 放假：变成文本框并禁用，消除 yyyy/mm/dd
+            swapInput.type = 'text';
             swapInput.disabled = true;
             swapInput.value = '';
         }
     }
 
-    // --- 保存 ---
+    // --- 保存 (已恢复真实接口) ---
     async function saveData(module, btn) {
         const tr = btn.closest('tr');
         const id = tr.dataset.id ? parseInt(tr.dataset.id) : null;
@@ -423,19 +440,17 @@
 
         } else if (module === 'calendar') {
             const date = tr.querySelector('.inp-date').value;
-            // --- 修改：获取字符串类型的 value ---
             const type = tr.querySelector('.inp-type').value;
             const swapDate = tr.querySelector('.inp-swap-date').value;
 
             if (!date) return showModal('error', '请选择日期');
 
-            // --- 修改：校验逻辑 ---
             if (type === CALENDAR_TYPES.SWAP.code && !swapDate) {
-                return showModal('error', '选择“调休”类型时，必须指定“调休关联日期”');
+                return showModal('error', '选择“调课”类型时，必须指定“调课日期”');
             }
 
             payload.date = date;
-            payload.type = type; // 传字符串给后端
+            payload.type = type;
             payload.swap_date = swapDate || null;
             payload.description = tr.querySelector('.inp-desc').value.trim();
             url = '/calendar/add';
@@ -452,18 +467,19 @@
 
             if (result.success) {
                 showModal('success', result.message || '保存成功');
+                // 成功后重新加载数据
                 if (module === 'lab') loadLabData();
                 if (module === 'account') loadAccountData();
                 if (module === 'calendar') loadCalendarData();
             } else {
-                throw new Error(result.error);
+                throw new Error(result.error || '保存失败');
             }
         } catch (e) {
             showModal('error', e.message);
         }
     }
 
-    // --- 删除 ---
+    // --- 删除 (已恢复真实接口) ---
     async function deleteData(module, btn) {
         const tr = btn.closest('tr');
         const id = tr.dataset.id;
@@ -478,12 +494,12 @@
             const result = await res.json();
 
             if (result.success) {
-                showModal('success', result.message);
+                showModal('success', result.message || '删除成功');
                 if (module === 'lab') loadLabData();
                 if (module === 'account') loadAccountData();
                 if (module === 'calendar') loadCalendarData();
             } else {
-                throw new Error(result.error);
+                throw new Error(result.error || '删除失败');
             }
         } catch (e) {
             showModal('error', e.message);
@@ -523,7 +539,8 @@
         if (type === 'loading') {
             modalBody.innerHTML = `<div class="spinner"></div><p>${msg}</p>`;
         } else {
-            modalBody.innerHTML = `<p style="font-size:16px; margin-top:10px;">${msg}</p>`;
+            const color = type === 'error' ? 'red' : 'green';
+            modalBody.innerHTML = `<p style="font-size:16px; margin-top:10px; color:${color}">${msg}</p>`;
             const btn = document.createElement('button');
             btn.textContent = '确定';
             btn.onclick = () => modal.style.display = 'none';

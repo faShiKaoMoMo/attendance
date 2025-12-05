@@ -116,6 +116,21 @@ def delete_config_data(lab_id):
 
 ####################################################################################################
 
+@config_bp.route('/account', methods=['GET'])
+def list_account():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM attendance_account ORDER BY id DESC')
+            rows = cursor.fetchall()
+
+        data = [dict(row) for row in rows]
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @config_bp.route('/account/list', methods=['GET'])
 def list_account_data():
     try:
