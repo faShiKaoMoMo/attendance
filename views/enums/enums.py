@@ -34,7 +34,7 @@ class ClassTypeEnum(Enum):
 
 class CalendarTypeEnum(Enum):
     HOLIDAY = "holiday"  # 放假
-    SWAP = "调休"  # 调休
+    SWAP = "swap"  # 调休
 
     @property
     def code(self) -> str:

@@ -1,4 +1,5 @@
 import json
+import math
 import sqlite3
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify
@@ -17,17 +18,23 @@ def index():
 @config_bp.route('/lab/list', methods=['GET'])
 def list_config_data():
     try:
-        pageNo = int(request.args.get('pageNo', 1))  # 当前页，默认为1
-        pageSize = int(request.args.get('pageSize', 10))  # 每页条数，默认为10
+        pageNo = int(request.args.get('pageNo', 1))
+        pageSize = int(request.args.get('pageSize', 10))
         offset = (pageNo - 1) * pageSize
 
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+
+            # 1. 查询总数
+            cursor.execute('SELECT COUNT(*) FROM attendance_config')
+            total = cursor.fetchone()[0]
+
+            # 2. 查询当前页数据
             cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC LIMIT ? OFFSET ?', (pageSize, offset))
             rows = cursor.fetchall()
 
-        data = []
+        data_list = []
         for row in rows:
             excluded_list = []
             if row["excluded_name"]:
@@ -35,14 +42,23 @@ def list_config_data():
                     excluded_list = json.loads(row["excluded_name"])
                 except Exception:
                     excluded_list = [name.strip() for name in row["excluded_name"].split(',') if name.strip()]
-            data.append({
+            data_list.append({
                 "id": row["id"],
                 "name": row["name"],
                 "lab": row["lab"],
                 "excluded_name": excluded_list
             })
 
-        return jsonify(data)
+        # 计算总页数 (处理 total=0 的情况，或者按照你的逻辑最小为1页)
+        pages = 1 if total < pageSize else math.ceil(total / pageSize)
+
+        return jsonify({
+            "pageNo": pageNo,
+            "pageSize": pageSize,
+            "total": total,
+            "pages": pages,
+            "list": data_list
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -51,6 +67,7 @@ def list_config_data():
 def add_config_data():
     try:
         req_data = request.get_json()
+        _id = req_data.get("id")  # 获取 ID 用于判断是新增还是编辑
         name = req_data.get("name")
         lab = req_data.get("lab")
         excluded_name = req_data.get("excluded_name", [])
@@ -63,12 +80,20 @@ def add_config_data():
 
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO attendance_config (name, lab, excluded_name, create_date, update_date)
-                VALUES (?, ?, ?, ?, ?)
-            """, (name, lab, excluded_str, now, now))
 
-        return jsonify({"success": True, "message": "配置已成功保存"})
+            if _id:
+                cursor.execute("""
+                    UPDATE attendance_config 
+                    SET name=?, lab=?, excluded_name=?, update_date=?
+                    WHERE id=?
+                """, (name, lab, excluded_str, now, _id))
+            else:
+                cursor.execute("""
+                    INSERT INTO attendance_config (name, lab, excluded_name, create_date, update_date)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (name, lab, excluded_str, now, now))
+
+        return jsonify({"success": True, "message": "保存成功"})
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -83,7 +108,7 @@ def delete_config_data(lab_id):
             if cursor.rowcount == 0:
                 return jsonify({"success": False, "error": "未找到指定的 ID，删除失败"}), 404
 
-        return jsonify({"success": True, "message": "配置已成功删除"})
+        return jsonify({"success": True, "message": "删除成功"})
     except Exception as e:
         print(f"An error occurred during deletion: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -94,18 +119,34 @@ def delete_config_data(lab_id):
 @config_bp.route('/account/list', methods=['GET'])
 def list_account_data():
     try:
-        pageNo = int(request.args.get('pageNo', 1))  # 当前页，默认为1
-        pageSize = int(request.args.get('pageSize', 10))  # 每页条数，默认为10
+        pageNo = int(request.args.get('pageNo', 1))
+        pageSize = int(request.args.get('pageSize', 10))
         offset = (pageNo - 1) * pageSize
 
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+
+            # 1. 查询总数
+            cursor.execute('SELECT COUNT(*) FROM attendance_account')
+            total = cursor.fetchone()[0]
+
+            # 2. 查询分页数据
             cursor.execute('SELECT * FROM attendance_account ORDER BY id DESC LIMIT ? OFFSET ?', (pageSize, offset))
             rows = cursor.fetchall()
 
-        data = [dict(row) for row in rows]
-        return jsonify(data)
+        data_list = [dict(row) for row in rows]
+
+        # 计算总页数
+        pages = 1 if total < pageSize else math.ceil(total / pageSize)
+
+        return jsonify({
+            "pageNo": pageNo,
+            "pageSize": pageSize,
+            "total": total,
+            "pages": pages,
+            "list": data_list
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -122,7 +163,7 @@ def add_or_update_account_data():
         now = datetime.now()
 
         if not name or not mobile or not password:
-            return jsonify({"success": False, "error": "名称, 手机号 和 密码 不能为空"}), 400
+            return jsonify({"success": False, "error": "名称, 手机号和密码不能为空"}), 400
 
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
@@ -140,7 +181,7 @@ def add_or_update_account_data():
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (name, mobile, password, email, now, now))
 
-        return jsonify({"success": True, "message": "账号已成功保存"})
+        return jsonify({"success": True, "message": "保存成功"})
     except sqlite3.IntegrityError as e:
         return jsonify({"success": False, "error": f"数据库操作失败: {e}"}), 409
     except Exception as e:
@@ -161,7 +202,7 @@ def delete_account_data(account_id):
             if cursor.rowcount == 0:
                 return jsonify({"success": False, "error": "未找到指定的账号 ID，删除失败"}), 404
 
-        return jsonify({"success": True, "message": "账号已成功删除"})
+        return jsonify({"success": True, "message": "删除成功"})
 
     except Exception as e:
         print(f"An error occurred during account deletion: {e}")
@@ -172,26 +213,20 @@ def delete_account_data(account_id):
 
 @config_bp.route('/calendar/list', methods=['GET'])
 def list_calendar_data():
-    """
-    分页获取日历配置表 calendar_override 的记录
-    GET -> 返回分页后的日历记录
-    """
     try:
-        # 获取分页参数，默认第一页，每页10条数据
         pageNo = int(request.args.get('pageNo', 1))
         pageSize = int(request.args.get('pageSize', 10))
-
-        offset = (pageNo - 1) * pageSize  # 计算分页偏移量
+        offset = (pageNo - 1) * pageSize
 
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            # 查询总记录数
+            # 1. 查询总记录数
             cursor.execute('SELECT COUNT(*) FROM calendar_override')
-            total_records = cursor.fetchone()[0]
+            total = cursor.fetchone()[0]
 
-            # 查询分页数据
+            # 2. 查询分页数据
             cursor.execute("""
                 SELECT * FROM calendar_override
                 ORDER BY date DESC
@@ -199,14 +234,17 @@ def list_calendar_data():
             """, (pageSize, offset))
             rows = cursor.fetchall()
 
-        # 将结果转为字典列表
-        data = [dict(row) for row in rows]
+        data_list = [dict(row) for row in rows]
+
+        # 计算总页数
+        pages = 1 if total < pageSize else math.ceil(total / pageSize)
+
         return jsonify({
-            "success": True,
-            "data": data,
-            "totalRecords": total_records,
             "pageNo": pageNo,
-            "pageSize": pageSize
+            "pageSize": pageSize,
+            "total": total,
+            "pages": pages,
+            "list": data_list
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -215,11 +253,12 @@ def list_calendar_data():
 @config_bp.route('/calendar/add', methods=['POST'])
 def add_calendar_data():
     """
-    新增日历配置记录
-    POST -> 新增日历记录
+    新增或编辑日历配置记录
+    POST -> 包含 id 则为编辑（先删后加），不含 id 则为新增
     """
     try:
         data = request.get_json()
+        _id = data.get("id")  # 获取 ID
         date = data.get("date")
         type = data.get("type")
         swap_date = data.get("swap_date", None)
@@ -232,6 +271,23 @@ def add_calendar_data():
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
 
+            if _id:
+                # 1. 查询旧数据详情，以便处理关联删除
+                cursor.execute("SELECT date, type, swap_date FROM calendar_override WHERE id = ?", (_id,))
+                row = cursor.fetchone()
+
+                if row:
+                    old_date, old_type, old_swap_date = row
+                    # 2. 删除当前记录
+                    cursor.execute("DELETE FROM calendar_override WHERE id = ?", (_id,))
+
+                    # 3. 如果旧数据是调休(SWAP)，把它的关联记录也删了，防止残留脏数据
+                    if old_type == CalendarTypeEnum.SWAP.code and old_swap_date:
+                        cursor.execute("""
+                            DELETE FROM calendar_override 
+                            WHERE date = ? AND type = ? AND swap_date = ?
+                        """, (old_swap_date, old_type, old_date))
+
             if type == CalendarTypeEnum.SWAP.code and swap_date:
                 # 插入两条交换记录
                 cursor.execute("""
@@ -243,13 +299,13 @@ def add_calendar_data():
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (swap_date, type, date, description, now, now))
             else:
-                # 插入新日历记录
+                # 插入单条记录
                 cursor.execute("""
                     INSERT INTO calendar_override (date, type, description, create_date, update_date)
                     VALUES (?, ?, ?, ?, ?)
                 """, (date, type, description, now, now))
 
-        return jsonify({"success": True, "message": "调课记录已成功保存"})
+        return jsonify({"success": True, "message": "保存成功"})
     except sqlite3.IntegrityError as e:
         return jsonify({"success": False, "error": f"数据库操作失败: {e}"}), 409
     except Exception as e:
@@ -289,7 +345,7 @@ def delete_calendar_data(calendar_id):
 
         return jsonify({
             "success": True,
-            "message": f"删除成功，共清理 {deleted_count} 条记录"
+            "message": f"删除成功"
         })
     except Exception as e:
         print(f"An error occurred during calendar deletion: {e}")

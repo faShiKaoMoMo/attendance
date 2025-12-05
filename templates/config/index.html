@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>考勤配置</title>
+    <title>考勤配置中心</title>
     <style>
-        /* --- 核心变量 --- */
+        /* --- 保持风格不变 --- */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2980b9;
@@ -13,6 +13,7 @@
             --danger-color: #e74c3c;
             --border-color: #dee2e6;
             --light-bg: #f8f9fa;
+            --text-color: #333;
         }
 
         * { box-sizing: border-box; }
@@ -20,7 +21,7 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0; padding: 20px;
-            background-color: #f5f7fa; color: #333;
+            background-color: #f5f7fa; color: var(--text-color);
         }
 
         .container {
@@ -45,15 +46,14 @@
             padding: 15px 25px; border: none; background: none;
             font-size: 16px; cursor: pointer; color: #6c757d;
             border-bottom: 3px solid transparent;
+            transition: all 0.3s;
         }
         .tab-btn:hover { color: var(--primary-color); background-color: #f8f9fa; }
         .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
 
-        .tab-content-wrapper { padding: 30px; flex-grow: 1; }
-        .tab-pane { display: none; }
-        .tab-pane.active { display: block }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .tab-content-wrapper { padding: 30px; flex-grow: 1; display: flex; flex-direction: column; }
+        .tab-pane { display: none; flex-direction: column; height: 100%; }
+        .tab-pane.active { display: flex; }
 
         .controls { display: flex; justify-content: flex-end; margin-bottom: 20px; }
         .add-btn {
@@ -61,73 +61,68 @@
             border: none; border-radius: 6px; cursor: pointer;
             display: flex; align-items: center; gap: 8px;
             box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+            transition: all 0.2s;
         }
         .add-btn:hover { background-color: var(--secondary-color); transform: translateY(-2px); }
-        .add-btn::before { content: "+"; font-size: 18px; font-weight: bold; }
 
-        /* =========================================
-           核心修复区：表格整体化样式
-           ========================================= */
-        .table-container { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+        /* --- 表格样式 --- */
+        .table-container {
+            border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;
+            flex-grow: 1;
+            margin-bottom: 20px;
+        }
 
         .styled-table {
-            width: 100%;
-            border-collapse: collapse; /* 合并边框 */
-            background-color: #fff;
-            table-layout: fixed; /* 固定列宽 */
+            width: 100%; border-collapse: collapse; background-color: #fff;
+            table-layout: fixed;
         }
 
         .styled-table th {
-            background-color: var(--light-bg);
-            padding: 12px 15px;
+            background-color: var(--light-bg); padding: 12px 15px;
             text-align: center; font-weight: 600;
-            border-bottom: 2px solid var(--border-color);
-            color: #343a40;
+            border-bottom: 2px solid var(--border-color); color: #343a40;
         }
 
-        /* 边框加在行(tr)上 */
-        .styled-table tr {
-            border-bottom: 1px solid var(--border-color);
-            transition: background-color 0.2s;
-        }
-        .styled-table tr:last-child { border-bottom: none; }
+        .styled-table tr { border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
         .styled-table tr:hover { background-color: #f8fafc; }
+        .styled-table td { border: none; padding: 8px 10px; vertical-align: middle; }
 
-        /* 单元格样式 */
-        .styled-table td {
-            border: none;
-            padding: 10px 15px;
-            vertical-align: middle;
-        }
-
-        /* 输入框高度锁定 36px */
-        .styled-table input {
-            width: 100%;
-            height: 36px; /* 固定高度 */
-            padding: 0 10px;
+        /* 输入控件统一 */
+        .styled-table input, .styled-table select {
+            width: 100%; height: 36px; padding: 0 10px;
             border: 1px solid #ced4da; border-radius: 4px;
-            font-size: 14px; color: #495057;
-            display: block;
-            line-height: 34px;
-            transition: all 0.3s ease;
+            font-size: 14px; color: #495057; display: block;
+            transition: border-color 0.2s;
         }
-        .styled-table input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15); }
+        .styled-table input:focus, .styled-table select:focus {
+            outline: none; border-color: var(--primary-color);
+        }
+        .styled-table input:disabled { background-color: #e9ecef; cursor: not-allowed; color: #999; }
 
-        /* 按钮高度锁定 36px，与输入框齐平 */
-        .action-buttons { display: flex; justify-content: center; align-items: center; gap: 8px; height: 100%; }
-
+        /* 操作按钮 */
+        .action-buttons { display: flex; justify-content: center; gap: 8px; }
         .row-btn {
-            height: 36px; /* 与输入框等高 */
-            padding: 0 15px;
-            font-size: 13px;
+            height: 36px; padding: 0 15px; font-size: 13px;
             border: none; border-radius: 4px; cursor: pointer; color: white;
-            display: inline-flex; align-items: center; justify-content: center;
-            transition: all 0.3s ease;
+            transition: transform 0.1s;
         }
         .save-row-btn { background-color: var(--success-color); }
         .save-row-btn:hover { background-color: #219653; transform: translateY(-1px); }
-        .remove-row-btn { background-color: var(--danger-color); }
-        .remove-row-btn:hover { background-color: #c0392b; transform: translateY(-1px); }
+        .delete-row-btn { background-color: var(--danger-color); }
+        .delete-row-btn:hover { background-color: #c0392b; transform: translateY(-1px); }
+
+        /* --- 分页控件 --- */
+        .pagination-container {
+            display: flex; justify-content: flex-end; align-items: center; gap: 15px;
+            padding-top: 10px; border-top: 1px solid var(--border-color);
+        }
+        .page-info { font-size: 14px; color: #666; }
+        .page-btn {
+            padding: 6px 12px; background-color: white; border: 1px solid var(--border-color);
+            border-radius: 4px; cursor: pointer; color: var(--primary-color);
+        }
+        .page-btn:hover:not(:disabled) { background-color: var(--light-bg); border-color: var(--primary-color); }
+        .page-btn:disabled { color: #ccc; cursor: not-allowed; }
 
         /* --- 弹窗 --- */
         .modal-overlay {
@@ -136,14 +131,25 @@
             justify-content: center; align-items: center; z-index: 999;
             backdrop-filter: blur(2px);
         }
-        .modal-content { background: white; padding: 30px 40px; border-radius: 12px; text-align: center; min-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .modal-buttons button { padding: 10px 25px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; font-size: 16px; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        .modal-content {
+            background: white; padding: 30px 40px; border-radius: 12px;
+            text-align: center; min-width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-buttons button {
+            padding: 10px 25px; background: var(--primary-color);
+            color: white; border: none; border-radius: 6px;
+            cursor: pointer; margin-top: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color);
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin: 0 auto 20px;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* 响应式 */
         @media (max-width: 768px) {
-            .styled-table { min-width: 800px; } /* 保持横向滚动 */
+            .styled-table { min-width: 800px; }
             .table-container { overflow-x: auto; }
         }
     </style>
@@ -152,37 +158,40 @@
 
 <div class="container">
     <header>
-        <h1>考勤配置</h1>
-        <div class="subtitle">管理配置与人员参数</div>
+        <h1>考勤配置中心</h1>
+        <div class="subtitle">管理考勤配置与参数</div>
     </header>
 
     <div class="tabs-nav">
-        <button class="tab-btn active" onclick="switchTab('lab-config')">实验室配置</button>
-        <button class="tab-btn" onclick="switchTab('account-config')">账号配置</button>
+        <button class="tab-btn active" onclick="switchTab('lab')">实验室配置</button>
+        <button class="tab-btn" onclick="switchTab('account')">账号配置</button>
+        <button class="tab-btn" onclick="switchTab('calendar')">调课配置</button>
     </div>
 
     <div class="tab-content-wrapper">
-        <!-- 实验室配置 -->
-        <div id="lab-config" class="tab-pane active">
-            <div class="controls"><button id="add-config-btn" class="add-btn">新增实验室</button></div>
+
+        <!-- 1. 实验室配置 -->
+        <div id="lab-tab" class="tab-pane active">
+            <div class="controls"><button onclick="addRow('lab')" class="add-btn">＋ 新增实验室</button></div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
                     <tr>
-                        <th style="width: 15%;">配置名称</th>
+                        <th style="width: 20%;">配置名称</th>
                         <th style="width: 20%;">实验室名称</th>
-                        <th style="width: 45%;">排除人员 (逗号分隔)</th>
+                        <th style="width: 40%;">排除人员 (逗号分隔)</th>
                         <th style="width: 20%;">操作</th>
                     </tr>
                     </thead>
-                    <tbody id="config-list"></tbody>
+                    <tbody id="lab-list"></tbody>
                 </table>
             </div>
+            <div class="pagination-container" id="lab-pagination"></div>
         </div>
 
-        <!-- 账号配置 -->
-        <div id="account-config" class="tab-pane">
-            <div class="controls"><button id="add-account-btn" class="add-btn">新增账号</button></div>
+        <!-- 2. 账号配置 -->
+        <div id="account-tab" class="tab-pane">
+            <div class="controls"><button onclick="addRow('account')" class="add-btn">＋ 新增账号</button></div>
             <div class="table-container">
                 <table class="styled-table">
                     <thead>
@@ -197,7 +206,29 @@
                     <tbody id="account-list"></tbody>
                 </table>
             </div>
+            <div class="pagination-container" id="account-pagination"></div>
         </div>
+
+        <!-- 3. 日历调休 -->
+        <div id="calendar-tab" class="tab-pane">
+            <div class="controls"><button onclick="addRow('calendar')" class="add-btn">＋ 新增日历配置</button></div>
+            <div class="table-container">
+                <table class="styled-table">
+                    <thead>
+                    <tr>
+                        <th style="width: 20%;">日期</th>
+                        <th style="width: 15%;">类型</th>
+                        <th style="width: 20%;">调休关联日期</th>
+                        <th style="width: 25%;">备注说明</th>
+                        <th style="width: 20%;">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="calendar-list"></tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="calendar-pagination"></div>
+        </div>
+
     </div>
 </div>
 
@@ -209,226 +240,296 @@
 </div>
 
 <script>
-    // ==================== Tab 切换逻辑 ====================
-    function switchTab(tabId) {
+    // ==================== 修改：常量定义 (使用字符串) ====================
+    const CALENDAR_TYPES = {
+        HOLIDAY: { code: 'holiday', label: '放假' },
+        SWAP:    { code: 'swap',    label: '调课' }
+    };
+
+    const API_BASE = '/config';
+
+    // 状态存储
+    const state = {
+        lab: { pageNo: 1, pageSize: 10, total: 0 },
+        account: { pageNo: 1, pageSize: 10, total: 0 },
+        calendar: { pageNo: 1, pageSize: 10, total: 0 }
+    };
+
+    // ==================== 初始化 ====================
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLabData();
+    });
+
+    function switchTab(module) {
         document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-        document.getElementById(tabId).classList.add('active');
-
+        document.getElementById(`${module}-tab`).classList.add('active');
         const btns = document.querySelectorAll('.tab-btn');
         btns.forEach(btn => {
-            if(btn.getAttribute('onclick').includes(tabId)) {
-                btn.classList.add('active');
-            }
+            if(btn.getAttribute('onclick').includes(module)) btn.classList.add('active');
+        });
+
+        if (module === 'lab') loadLabData();
+        if (module === 'account') loadAccountData();
+        if (module === 'calendar') loadCalendarData();
+    }
+
+    // ==================== 数据加载 ====================
+
+    async function fetchData(module, endpoint) {
+        const { pageNo, pageSize } = state[module];
+        try {
+            const res = await fetch(`${API_BASE}${endpoint}?pageNo=${pageNo}&pageSize=${pageSize}`);
+            const data = await res.json();
+
+            state[module].total = data.total;
+            state[module].pages = data.pages;
+
+            renderList(module, data.list);
+            renderPagination(module);
+        } catch (e) {
+            showModal('error', `加载数据失败: ${e.message}`);
+        }
+    }
+
+    function loadLabData() { fetchData('lab', '/lab/list'); }
+    function loadAccountData() { fetchData('account', '/account/list'); }
+    function loadCalendarData() { fetchData('calendar', '/calendar/list'); }
+
+    // ==================== 渲染列表 ====================
+
+    function renderList(module, list) {
+        const tbody = document.getElementById(`${module}-list`);
+        tbody.innerHTML = '';
+        if (!list || list.length === 0) return;
+
+        list.forEach(item => {
+            const tr = createRowElement(module, item);
+            tbody.appendChild(tr);
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const configListBody = document.getElementById('config-list');
-        const addConfigBtn = document.getElementById('add-config-btn');
-        const accountListBody = document.getElementById('account-list');
-        const addAccountBtn = document.getElementById('add-account-btn');
-        const modal = document.getElementById('modal');
-        const modalBody = document.getElementById('modal-body');
-        const modalButtons = document.getElementById('modal-buttons');
+    function createRowElement(module, data = {}) {
+        const tr = document.createElement('tr');
+        tr.dataset.id = data.id || '';
 
-        // ==================== 通用 UI 函数 ====================
+        let contentHtml = '';
+        const isNew = !data.id;
 
-        function showModal(type, message) {
-            modalBody.innerHTML = '';
-            modalButtons.innerHTML = '';
-            switch (type) {
-                case 'loading':
-                    modalBody.innerHTML = `<div class="spinner"></div><p>${message}</p>`;
-                    break;
-                case 'success':
-                case 'error':
-                    modalBody.innerHTML = `<p>${message}</p>`;
-                    const okButton = document.createElement('button');
-                    okButton.textContent = '确定';
-                    okButton.onclick = () => {
-                        modal.style.display = 'none';
-                        if (type === 'success') loadAllData();
-                    };
-                    modalButtons.appendChild(okButton);
-                    break;
-            }
-            modal.style.display = 'flex';
-        }
-
-        // ==================== 数据加载 ====================
-
-        async function loadAllData() {
-            try {
-                // 恢复了真实的 API 调用
-                const [configResponse, accountResponse] = await Promise.all([
-                    fetch('/config/api'),
-                    fetch('/config/account')
-                ]);
-                if (!configResponse.ok) throw new Error(`加载考勤配置失败`);
-                if (!accountResponse.ok) throw new Error(`加载账号失败`);
-
-                const configData = await configResponse.json();
-                const accounts = await accountResponse.json();
-                renderConfigList(configData);
-                renderAccountList(accounts);
-            } catch (error) {
-                // 如果后端挂了，这里会报错。为了方便调试，你可以保留一个 render 空数据的操作
-                showModal('error', `数据加载失败: ${error.message}`);
-                // 渲染空数据防止页面空白
-                if (configListBody.children.length === 0) renderConfigList([]);
-                if (accountListBody.children.length === 0) renderAccountList([]);
-            }
-        }
-
-        // ==================== 实验室配置逻辑 ====================
-
-        function renderConfigList(data) {
-            configListBody.innerHTML = '';
-            if (!data || data.length === 0) {
-                configListBody.appendChild(createConfigRow());
-                return;
-            }
-            data.forEach(item => configListBody.appendChild(createConfigRow(item)));
-        }
-
-        function createConfigRow(config = {}) {
-            const tr = document.createElement('tr');
-            tr.dataset.id = config.id || '';
-            const excludedStr = (config.excluded_name || []).join(', ');
-
-            // 恢复了你原本的逻辑：只有没有ID（新增行）才显示“移除”按钮
-            const removeBtnHtml = !config.id ? '<button class="row-btn remove-row-btn">移除</button>' : '';
-
-            tr.innerHTML = `
-                <td><input type="text" class="config-name" value="${config.name || ''}" placeholder="例如: 翔安"></td>
-                <td><input type="text" class="config-lab" value="${config.lab || ''}" placeholder="得力e+实验室名"></td>
-                <td><input type="text" class="config-excluded" value="${excludedStr}" placeholder="排除人员 (逗号隔开)"></td>
-                <td class="action-buttons">
-                    <button class="row-btn save-row-btn">保存</button>
-                    ${removeBtnHtml}
-                </td>`;
-            return tr;
-        }
-
-        async function saveConfigRowData(rowElement) {
-            const id = rowElement.dataset.id || null;
-            const name = rowElement.querySelector('.config-name').value.trim();
-            const lab = rowElement.querySelector('.config-lab').value.trim();
-            const excludedStr = rowElement.querySelector('.config-excluded').value.trim();
-
-            if (!name || !lab) return showModal('error', '“配置名称”和“实验室”为必填项！');
-
-            // 稍微优化了一下分隔符，支持中英文逗号
-            const excluded_name = excludedStr ? excludedStr.split(/,|，/).map(s => s.trim()).filter(Boolean) : [];
-            const payload = {id, name, lab, excluded_name};
-            if (!payload.id) delete payload.id;
-
-            showModal('loading', '正在保存配置...');
-            try {
-                // 恢复了真实的 API POST 请求
-                const response = await fetch('/config/api', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error(`服务器错误`);
-                const result = await response.json();
-                if (result.success) showModal('success', '保存成功！');
-                else throw new Error(result.error || '保存失败');
-            } catch (error) {
-                showModal('error', `错误: ${error.message}`);
-            }
-        }
-
-        // ==================== 账号配置逻辑 ====================
-
-        function renderAccountList(data) {
-            accountListBody.innerHTML = '';
-            if (!data || data.length === 0) {
-                accountListBody.appendChild(createAccountRow());
-                return;
-            }
-            data.forEach(item => accountListBody.appendChild(createAccountRow(item)));
-        }
-
-        function createAccountRow(account = {}) {
-            const tr = document.createElement('tr');
-            tr.dataset.id = account.id || '';
-
-            // 恢复了逻辑：新增行才显示移除
-            const removeBtnHtml = !account.id ? '<button class="row-btn remove-row-btn">移除</button>' : '';
-
-            tr.innerHTML = `
-                <td><input type="text" class="account-name" value="${account.name || ''}" placeholder="姓名"></td>
-                <td><input type="text" class="account-mobile" value="${account.mobile || ''}" placeholder="得力e+的手机号"></td>
-                <td><input type="text" class="account-password" value="${account.password || ''}" placeholder="得力e+的密码"></td>
-                <!-- 保持了修复：使用 type="text" 防止多邮箱报错 -->
-                <td><input type="text" class="account-email" value="${account.email || ''}" placeholder="通知邮箱 (逗号分隔)"></td>
-                <td class="action-buttons">
-                    <button class="row-btn save-row-btn">保存</button>
-                    ${removeBtnHtml}
-                </td>
+        if (module === 'lab') {
+            const excluded = (data.excluded_name || []).join(', ');
+            contentHtml = `
+                <td><input class="inp-name" value="${data.name || ''}" placeholder="例如: 翔安"></td>
+                <td><input class="inp-lab" value="${data.lab || ''}" placeholder="得力e+实验室名称"></td>
+                <td><input class="inp-excluded" value="${excluded}" placeholder="姓名逗号隔开"></td>
             `;
-            return tr;
-        }
+        } else if (module === 'account') {
+            contentHtml = `
+                <td><input class="inp-name" value="${data.name || ''}" placeholder="姓名"></td>
+                <td><input class="inp-mobile" value="${data.mobile || ''}" placeholder="手机号"></td>
+                <td><input class="inp-pwd" type="text" value="${data.password || ''}" placeholder="${isNew?'必填':'留空不改'}"></td>
+                <td><input class="inp-email" value="${data.email || ''}" placeholder="邮箱"></td>
+            `;
+        } else if (module === 'calendar') {
+            // --- 修改：下拉框渲染逻辑 ---
+            // 确保 type 是字符串比较
+            const currentType = data.type || CALENDAR_TYPES.HOLIDAY.code; // 默认选中节假日
 
-        async function saveAccountRowData(rowElement) {
-            const id = rowElement.dataset.id || null;
-            const name = rowElement.querySelector('.account-name').value.trim();
-            const mobile = rowElement.querySelector('.account-mobile').value.trim();
-            const password = rowElement.querySelector('.account-password').value.trim();
-            const email = rowElement.querySelector('.account-email').value.trim();
-
-            if (!name || !mobile) return showModal('error', '“姓名”和“手机号”为必填项！');
-            if (!id && !password) return showModal('error', '新增账号时，“密码”不能为空！');
-
-            const payload = {id, name, mobile, password, email};
-            if (!payload.id) delete payload.id;
-            if (!payload.password) delete payload.password;
-
-            showModal('loading', '正在保存账号...');
-            try {
-                // 恢复了真实的 API POST 请求
-                const response = await fetch('/config/account', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error(`服务器错误`);
-                const result = await response.json();
-                if (result.success) showModal('success', '保存成功！');
-                else throw new Error(result.error || '保存失败');
-            } catch (error) {
-                showModal('error', `错误: ${error.message}`);
+            let options = '';
+            for (const key in CALENDAR_TYPES) {
+                const typeObj = CALENDAR_TYPES[key];
+                const selected = currentType === typeObj.code ? 'selected' : '';
+                options += `<option value="${typeObj.code}" ${selected}>${typeObj.label}</option>`;
             }
+
+            // --- 修改：判断是否禁用关联日期 ---
+            // 只有 type === 'swap' 时才启用，否则禁用
+            const isSwap = currentType === CALENDAR_TYPES.SWAP.code;
+
+            contentHtml = `
+                <td><input type="date" class="inp-date" value="${data.date || ''}"></td>
+                <td><select class="inp-type" onchange="handleTypeChange(this)">${options}</select></td>
+                <td><input type="date" class="inp-swap-date" value="${data.swap_date || ''}" ${isSwap ? '' : 'disabled'}></td>
+                <td><input class="inp-desc" value="${data.description || ''}" placeholder="例如: 国庆节放假"></td>
+            `;
         }
 
-        // ==================== 事件监听 ====================
+        contentHtml += `
+            <td class="action-buttons">
+                <button class="row-btn save-row-btn" onclick="saveData('${module}', this)">保存</button>
+                <button class="row-btn delete-row-btn" onclick="deleteData('${module}', this)">${isNew ? '移除' : '删除'}</button>
+            </td>
+        `;
 
-        addConfigBtn.addEventListener('click', () => configListBody.prepend(createConfigRow()));
-        addAccountBtn.addEventListener('click', () => accountListBody.prepend(createAccountRow()));
+        tr.innerHTML = contentHtml;
+        return tr;
+    }
 
-        configListBody.addEventListener('click', function (event) {
-            const target = event.target;
-            const row = target.closest('tr');
-            if (!row) return;
-            if (target.classList.contains('save-row-btn')) saveConfigRowData(row);
-            else if (target.classList.contains('remove-row-btn')) row.remove();
-        });
+    function addRow(module) {
+        const tbody = document.getElementById(`${module}-list`);
+        tbody.prepend(createRowElement(module, {}));
+    }
 
-        accountListBody.addEventListener('click', function (event) {
-            const target = event.target;
-            const row = target.closest('tr');
-            if (!row) return;
-            if (target.classList.contains('save-row-btn')) saveAccountRowData(row);
-            else if (target.classList.contains('remove-row-btn')) row.remove();
-        });
+    // ==================== 逻辑处理 (CUD) ====================
 
-        // 初始加载
-        loadAllData();
-    });
+    // --- 修改：类型变更联动 ---
+    function handleTypeChange(selectElem) {
+        const tr = selectElem.closest('tr');
+        const swapInput = tr.querySelector('.inp-swap-date');
+        const val = selectElem.value; // 获取字符串值
+
+        if (val === CALENDAR_TYPES.SWAP.code) {
+            // 如果是调休，启用
+            swapInput.disabled = false;
+        } else {
+            // 如果是放假(holiday)，禁用并清空
+            swapInput.disabled = true;
+            swapInput.value = '';
+        }
+    }
+
+    // --- 保存 ---
+    async function saveData(module, btn) {
+        const tr = btn.closest('tr');
+        const id = tr.dataset.id ? parseInt(tr.dataset.id) : null;
+        let payload = { id };
+        let url = '';
+
+        if (module === 'lab') {
+            const name = tr.querySelector('.inp-name').value.trim();
+            const lab = tr.querySelector('.inp-lab').value.trim();
+            const excludedStr = tr.querySelector('.inp-excluded').value.trim();
+            if (!name || !lab) return showModal('error', '名称和实验室不能为空');
+
+            payload.name = name;
+            payload.lab = lab;
+            payload.excluded_name = excludedStr ? excludedStr.split(/,|，/).map(s=>s.trim()).filter(s=>s) : [];
+            url = '/lab/add';
+
+        } else if (module === 'account') {
+            const name = tr.querySelector('.inp-name').value.trim();
+            const mobile = tr.querySelector('.inp-mobile').value.trim();
+            const pwd = tr.querySelector('.inp-pwd').value.trim();
+
+            if (!name || !mobile) return showModal('error', '姓名和手机号不能为空');
+            if (!id && !pwd) return showModal('error', '新增账号必须填写密码');
+
+            payload.name = name;
+            payload.mobile = mobile;
+            if(pwd) payload.password = pwd;
+            payload.email = tr.querySelector('.inp-email').value.trim();
+            url = '/account/add';
+
+        } else if (module === 'calendar') {
+            const date = tr.querySelector('.inp-date').value;
+            // --- 修改：获取字符串类型的 value ---
+            const type = tr.querySelector('.inp-type').value;
+            const swapDate = tr.querySelector('.inp-swap-date').value;
+
+            if (!date) return showModal('error', '请选择日期');
+
+            // --- 修改：校验逻辑 ---
+            if (type === CALENDAR_TYPES.SWAP.code && !swapDate) {
+                return showModal('error', '选择“调休”类型时，必须指定“调休关联日期”');
+            }
+
+            payload.date = date;
+            payload.type = type; // 传字符串给后端
+            payload.swap_date = swapDate || null;
+            payload.description = tr.querySelector('.inp-desc').value.trim();
+            url = '/calendar/add';
+        }
+
+        showModal('loading', '正在保存...');
+        try {
+            const res = await fetch(API_BASE + url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                showModal('success', result.message || '保存成功');
+                if (module === 'lab') loadLabData();
+                if (module === 'account') loadAccountData();
+                if (module === 'calendar') loadCalendarData();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e) {
+            showModal('error', e.message);
+        }
+    }
+
+    // --- 删除 ---
+    async function deleteData(module, btn) {
+        const tr = btn.closest('tr');
+        const id = tr.dataset.id;
+        if (!id) { tr.remove(); return; }
+
+        if (!confirm('确定要永久删除这条记录吗？')) return;
+
+        showModal('loading', '正在删除...');
+        try {
+            const url = `${API_BASE}/${module}/${id}/delete`;
+            const res = await fetch(url, { method: 'POST' });
+            const result = await res.json();
+
+            if (result.success) {
+                showModal('success', result.message);
+                if (module === 'lab') loadLabData();
+                if (module === 'account') loadAccountData();
+                if (module === 'calendar') loadCalendarData();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e) {
+            showModal('error', e.message);
+        }
+    }
+
+    // ==================== 分页控件 ====================
+
+    function renderPagination(module) {
+        const container = document.getElementById(`${module}-pagination`);
+        const s = state[module];
+
+        container.innerHTML = `
+            <div class="page-info">共 ${s.total} 条，页码 ${s.pageNo} / ${s.pages || 1}</div>
+            <button class="page-btn" ${s.pageNo <= 1 ? 'disabled' : ''} onclick="changePage('${module}', -1)">上一页</button>
+            <button class="page-btn" ${s.pageNo >= s.pages ? 'disabled' : ''} onclick="changePage('${module}', 1)">下一页</button>
+        `;
+    }
+
+    function changePage(module, delta) {
+        state[module].pageNo += delta;
+        if (module === 'lab') loadLabData();
+        if (module === 'account') loadAccountData();
+        if (module === 'calendar') loadCalendarData();
+    }
+
+    // ==================== 模态框 ====================
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modal-body');
+    const modalButtons = document.getElementById('modal-buttons');
+
+    function showModal(type, msg) {
+        modalBody.innerHTML = '';
+        modalButtons.innerHTML = '';
+        modal.style.display = 'flex';
+
+        if (type === 'loading') {
+            modalBody.innerHTML = `<div class="spinner"></div><p>${msg}</p>`;
+        } else {
+            modalBody.innerHTML = `<p style="font-size:16px; margin-top:10px;">${msg}</p>`;
+            const btn = document.createElement('button');
+            btn.textContent = '确定';
+            btn.onclick = () => modal.style.display = 'none';
+            modalButtons.appendChild(btn);
+        }
+    }
 </script>
 
 </body>

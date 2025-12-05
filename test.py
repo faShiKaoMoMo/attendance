@@ -234,10 +234,8 @@ cursor = conn.cursor()
 # cursor.execute("CREATE INDEX IF NOT EXISTS idx_travel_start_date ON travel(start_date)")
 #
 # test_travel_data = [
-#     ('王文凯', '九牧', '九牧RPA', '2025-11-03', '2025-11-07', 1, 8, '九牧RPA', '2025-10-27 09:30:00',
-#      '2025-10-27T14:20:00'),
-#     ('王文凯', '九牧', '九牧RPA', '2025-11-11', '2025-11-12', 1, 8, '九牧RPA', '2025-10-27 09:30:00',
-#      '2025-10-27T14:20:00'),
+#     ('王文凯', '九牧', '九牧RPA', '2025-11-03', '2025-11-07', 1, 8, '九牧RPA', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+#     ('王文凯', '九牧', '九牧RPA', '2025-11-11', '2025-11-12', 1, 8, '九牧RPA', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 # ]
 #
 # cursor.executemany("""
@@ -266,7 +264,7 @@ cursor = conn.cursor()
 # cursor.execute("CREATE INDEX IF NOT EXISTS idx_leave_start_date ON leave(start_date)")
 #
 # test_leave_data = [
-#     ('王文凯', '2025-11-10', '2025-11-10', 1, '面试', '2025-11-09 09:30:00', '2025-11-09:30:00'),
+#     ('王文凯', '2025-11-10', '2025-11-10', 1, '面试', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 # ]
 #
 # cursor.executemany("""
@@ -295,20 +293,40 @@ CREATE INDEX idx_calendar_override_date ON calendar_override(date);
 """)
 
 cursor.execute("""
-INSERT INTO calendar_override (date, type, description) VALUES
-    ('2025-10-01', 'holiday', '国庆节、中秋节放假'),
-    ('2025-10-02', 'holiday', '国庆节、中秋节放假'),
-    ('2025-10-03', 'holiday', '国庆节、中秋节放假'),
-    ('2025-10-06', 'holiday', '国庆节、中秋节放假');
+INSERT INTO calendar_override (date, type, description, create_date, update_date) VALUES
+    ('2025-10-01', 'holiday', '国庆节、中秋节放假', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-10-02', 'holiday', '国庆节、中秋节放假', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-10-03', 'holiday', '国庆节、中秋节放假', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-10-06', 'holiday', '国庆节、中秋节放假', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 """)
 
 cursor.execute("""
-INSERT INTO calendar_override (date, type, swap_date, description) VALUES
-    ('2025-09-28', 'swap', '2024-10-07', '国庆节、中秋节放假调休'),
-    ('2025-10-07', 'swap', '2024-09-28', '国庆节、中秋节放假调休'),
-    ('2025-10-08', 'swap', '2024-10-11', '国庆节、中秋节放假调休'),
-    ('2025-10-11', 'swap', '2024-10-08', '国庆节、中秋节放假调休');
+INSERT INTO calendar_override (date, type, swap_date, description, create_date, update_date) VALUES
+    ('2025-09-28', 'swap', '2024-10-07', '国庆节、中秋节放假调休', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-10-07', 'swap', '2024-09-28', '国庆节、中秋节放假调休', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-10-08', 'swap', '2024-10-11', '国庆节、中秋节放假调休', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-10-11', 'swap', '2024-10-08', '国庆节、中秋节放假调休', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 """)
+
+cursor.execute("""
+INSERT INTO calendar_override (date, type, description, create_date, update_date) VALUES
+    ('2025-05-01', 'holiday', '五一劳动节放假', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-05-02', 'holiday', '五一劳动节放假', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+""")
+
+cursor.execute("""
+INSERT INTO calendar_override (date, type, swap_date, description, create_date, update_date) VALUES
+    ('2025-04-27', 'swap', '2025-05-05', '五一劳动节调休', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('2025-05-05', 'swap', '2025-04-27', '五一劳动节调休', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+""")
+
+rows = cursor.execute("""
+    SELECT * FROM calendar_override
+    ORDER BY date DESC
+    LIMIT ? OFFSET ?
+""", (10, 0))
+for row in rows:
+    print(row)
 
 
 ################################################## 清空爬虫记录
