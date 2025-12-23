@@ -421,13 +421,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- 出勤天数 -->
-            <div class="form-group">
-                <label for="attendance-days">预计出勤天数 (工作日)</label>
-                <input type="number" id="attendance-days" name="attendance-days" placeholder="自动计算...">
-            </div>
-
             <button type="submit" class="submit-btn">开始统计任务</button>
         </form>
     </div>
@@ -456,7 +449,6 @@
     // --- 页面元素引用 ---
     const startDateInput = document.getElementById('start-date');
     const endDateInput = document.getElementById('end-date');
-    const attendanceDaysInput = document.getElementById('attendance-days');
     const accountSelectionDisplay = document.getElementById('account-selection-display');
     const accountOptionsContainer = document.getElementById('account-options-list');
 
@@ -542,10 +534,6 @@
         accountOptionsContainer.style.display = 'none';
     });
 
-    // --- 日期和工作日计算 ---
-    startDateInput.addEventListener('change', calculateWeekdays);
-    endDateInput.addEventListener('change', calculateWeekdays);
-
     function setWeeklyDateRange() {
         const today = new Date();
         const endDate = new Date(today);
@@ -570,9 +558,6 @@
         // 赋值给输入框
         startDateInput.value = formatDateForInput(startDate);
         endDateInput.value = formatDateForInput(endDate);
-
-        // 触发工作日计算
-        calculateWeekdays();
     }
 
     function setMonthlyDateRange() {
@@ -584,7 +569,6 @@
 
         startDateInput.value = formatDateForInput(prevMonthStartDate);
         endDateInput.value = formatDateForInput(prevMonthEndDate);
-        calculateWeekdays();
     }
 
     function formatDateForInput(date) {
@@ -592,26 +576,6 @@
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
-    }
-
-    function calculateWeekdays() {
-        if (!startDateInput.value || !endDateInput.value) {
-            attendanceDaysInput.value = '';
-            return;
-        }
-        const startDate = new Date(startDateInput.value);
-        const endDate = new Date(endDateInput.value);
-        if (startDate <= endDate) {
-            let count = 0;
-            const curDate = new Date(startDate.getTime());
-            while (curDate <= endDate) {
-                if (curDate.getDay() !== 0 && curDate.getDay() !== 6) count++;
-                curDate.setDate(curDate.getDate() + 1);
-            }
-            attendanceDaysInput.value = count;
-        } else {
-            attendanceDaysInput.value = '0';
-        }
     }
 
     // --- 核心逻辑：模态框、轮询、表单提交 ---
@@ -750,7 +714,6 @@
             account_id: selectedAccount.id,
             start_date: startDateValue.replace(/-/g, ''),
             end_date: endDateValue.replace(/-/g, ''),
-            attendance_days: Number(attendanceDaysInput.value)
         };
 
         submitBtn.disabled = true;
