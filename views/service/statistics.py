@@ -37,24 +37,37 @@ def get_week_type(current_date, ref_date):
     """
     判断给定日期是单周还是双周。
     基于 ref_date (开学第一周) 计算。
+    修复：使用 (日期差 // 7) 逻辑，彻底解决跨年导致的周次重置问题。
     """
-    # 兼容处理：如果传入的是 date 对象 (mysql date类型)，转为 datetime
+    # 1. 兼容处理：确保 ref_date 是 datetime 对象
     if not isinstance(ref_date, datetime):
         if hasattr(ref_date, 'year'):
             ref_date = datetime(ref_date.year, ref_date.month, ref_date.day)
         else:
-            # 如果是其他异常类型，默认一个兜底时间，防止报错
+            # 兜底时间
             ref_date = datetime(2025, 9, 1)
 
-    ref_week = ref_date.isocalendar()[1]
-    current_week = current_date.isocalendar()[1]
+    # 2. 兼容处理：确保 current_date 是 datetime 对象 (增强健壮性)
+    if not isinstance(current_date, datetime):
+        if hasattr(current_date, 'year'):
+            current_date = datetime(current_date.year, current_date.month, current_date.day)
 
-    # 简单的周次差计算
-    # 注意：如果跨年，isocalendar()[1] 会重置，这里简单处理假设学期内不跨非常大的年份周期
-    # 或者如果跨年，需要更复杂的 (date-ref).days // 7 逻辑
-    # 保持原有逻辑风格：
-    week_difference = current_week - ref_week
+    # 3. 核心逻辑修复：
+    # 将两个日期都“对齐”到它们所在周的【周一】
+    # weekday(): 周一=0, 周二=1, ... 周日=6
+    ref_monday = ref_date - timedelta(days=ref_date.weekday())
+    current_monday = current_date - timedelta(days=current_date.weekday())
 
+    # 计算两个周一之间的天数差
+    days_diff = (current_monday - ref_monday).days
+
+    # 计算周次差 (整除7)
+    # 例如：同一周差0天->0，下一周差7天->1
+    week_difference = days_diff // 7
+
+    # 4. 返回结果
+    # 原始逻辑：0 (即开学当周) 视为 ODD (单周)
+    # week_difference 为偶数时返回 ODD，为奇数时返回 EVEN
     return ClassTypeEnum.ODD.code if week_difference % 2 == 0 else ClassTypeEnum.EVEN.code
 
 
