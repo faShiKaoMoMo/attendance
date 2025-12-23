@@ -44,17 +44,16 @@ def get_week_type(current_date, ref_date):
         if hasattr(ref_date, 'year'):
             ref_date = datetime(ref_date.year, ref_date.month, ref_date.day)
         else:
-            # 兜底时间
-            ref_date = datetime(2025, 9, 1)
+            raise Exception("找不到学期课表")
 
-    # 2. 兼容处理：确保 current_date 是 datetime 对象 (增强健壮性)
+    # 2. 兼容处理：确保 current_date 是 datetime 对象
     if not isinstance(current_date, datetime):
         if hasattr(current_date, 'year'):
             current_date = datetime(current_date.year, current_date.month, current_date.day)
 
     # 3. 核心逻辑修复：
     # 将两个日期都“对齐”到它们所在周的【周一】
-    # weekday(): 周一=0, 周二=1, ... 周日=6
+    # weekday(): 周一=0, ... 周日=6
     ref_monday = ref_date - timedelta(days=ref_date.weekday())
     current_monday = current_date - timedelta(days=current_date.weekday())
 
@@ -62,24 +61,18 @@ def get_week_type(current_date, ref_date):
     days_diff = (current_monday - ref_monday).days
 
     # 计算周次差 (整除7)
-    # 例如：同一周差0天->0，下一周差7天->1
     week_difference = days_diff // 7
 
     # 4. 返回结果
-    # 原始逻辑：0 (即开学当周) 视为 ODD (单周)
-    # week_difference 为偶数时返回 ODD，为奇数时返回 EVEN
+    # 0 (即开学当周) 视为 ODD (单周)
     return ClassTypeEnum.ODD.code if week_difference % 2 == 0 else ClassTypeEnum.EVEN.code
 
 
-def generate_class_schedule(start_date_str, end_date_str, items, semester_start_input, semester_end_input):
+def generate_class_schedule(start_date_str, end_date_str, items, semester_start_input, semester_end_input, override_map):
     """
-    items: list of dicts, each row from semester_class_item:
-        {
-            "name": "张三",
-            "week": 0,
-            "slot": "08:00 - 09:40",
-            "type": "all/odd/even"
-        }
+    生成课表。
+    新增参数: override_map (dict)，用于处理调休和节假日。
+    结构: {'20251001': {'type': 'holiday'}, '20250928': {'type': 'swap', 'swap_date': datetime_obj}}
     """
     class_schedule = {}
     start_date = datetime.strptime(start_date_str, "%Y%m%d")
@@ -94,20 +87,20 @@ def generate_class_schedule(start_date_str, end_date_str, items, semester_start_
     if semester_end_input:
         ref_end_date = parse_flexible_date(semester_end_input, ref_end_date)
 
-    # 解析 slot 一次，提高性能
+    # 解析 slot
     parsed_items = []
     for it in items:
         try:
             start_t, end_t = [t.strip() for t in it["slot"].split("-")]
+            parsed_items.append({
+                "name": it["name"],
+                "week": int(it["week"]),  # 0-6
+                "start": start_t,
+                "end": end_t,
+                "type": it["type"]
+            })
         except:
             continue
-        parsed_items.append({
-            "name": it["name"],
-            "week": int(it["week"]),
-            "start": start_t,
-            "end": end_t,
-            "type": it["type"]
-        })
 
     # 开始按天生成课表
     current_date = start_date
@@ -116,23 +109,51 @@ def generate_class_schedule(start_date_str, end_date_str, items, semester_start_
         if current_date > ref_end_date:
             break
 
-        weekday = current_date.weekday()
-        if weekday >= 5:     # 跳过周末
+        date_key = current_date.strftime("%Y%m%d")
+
+        # 默认逻辑日期 = 物理日期
+        logic_date = current_date
+        is_holiday = False
+
+        # 检查 override 配置
+        if date_key in override_map:
+            setting = override_map[date_key]
+            if setting['type'] == 'holiday':
+                is_holiday = True
+            elif setting['type'] == 'swap':
+                # 如果是调休，课表逻辑使用 swap_date (例如周日补周二的课，逻辑日期就是周二那天)
+                logic_date = setting.get('swap_date', current_date)
+
+        # 1. 如果是节假日，直接跳过排课
+        if is_holiday:
             current_date += timedelta(days=1)
             continue
 
-        week_type = get_week_type(current_date, ref_date)
-        date_key = current_date.strftime("%Y%m%d")
+        # 2. 获取【逻辑日期】的星期几
+        # 如果是调休(周日补周二)，这里 weekday=1 (周二)
+        weekday = logic_date.weekday()
+
+        # 3. 这里的过滤逻辑基于【逻辑日期】
+        # 如果今天是周日(Phys)，但调休补周二(Logic)，weekday=1，不会被 skip，会正常排课
+        if weekday >= 5:
+            current_date += timedelta(days=1)
+            continue
+
+        # 4. 获取【逻辑日期】的单双周类型
+        week_type = get_week_type(logic_date, ref_date)
+
+        # === 核心修改逻辑 End ===
 
         for it in parsed_items:
+            # 匹配 逻辑日期 的星期
             if it["week"] != weekday:
                 continue
 
-            # 单双周匹配
+            # 匹配 逻辑日期 的单双周
             if it["type"] != ClassTypeEnum.ALL.code and it["type"] != week_type:
                 continue
 
-            # 写入结构
+            # 写入结构 (Key 依然是 date_key 即物理日期)
             person = it["name"]
             course_info = {
                 "start": it["start"],
@@ -201,20 +222,26 @@ def fetchdata(start_date, end_date, token, org_id, member_id):
 
 ####################################################################################################
 
-def statistic_person(name, record_week, total_work_days, class_schedule, travel_dates, leave_dates):
+def statistic_person(name, record_week, total_work_days, class_schedule, travel_dates, leave_dates, holiday_dates, swap_dates):
+    """
+    Args:
+        name: 姓名
+        record_week: 考勤原始数据列表
+        total_work_days: 总应出勤天数
+        class_schedule: 课表字典
+        travel_dates: 出差日期集合 (set of "YYYY-MM-DD")
+        leave_dates: 请假日期集合 (set of "YYYY-MM-DD")
+        holiday_dates: 节假日日期集合 (set of "YYYY-MM-DD") - 包含物理上的周一~周五放假
+        swap_dates: [新增参数] 调休上班日期集合 (set of "YYYY-MM-DD") - 包含物理上的周末补班
+    """
     # --- 配置常量 (分钟) ---
-    # AM: 7:30(450) - 9:30(570) 必须在此区间签到
-    AM_WINDOW_START = 450
-    AM_WINDOW_END = 570
-    AM_SPLIT = 810  # 13:30 分界线
-
-    # PM: 13:30(810) - 14:30(870) 必须在此区间签到
-    PM_WINDOW_START = 810
-    PM_WINDOW_END = 870
-    PM_SPLIT = 1110  # 18:30 分界线
-
-    # Eve: 18:30(1110) - 23:30(1410)
-    EVE_CHECKOUT_LIMIT = 1410
+    AM_WINDOW_START = 450  # 07:30
+    AM_WINDOW_END = 570  # 09:30
+    AM_SPLIT = 810  # 13:30
+    PM_WINDOW_START = 810  # 13:30
+    PM_WINDOW_END = 870  # 14:30
+    PM_SPLIT = 1110  # 18:30
+    EVE_CHECKOUT_LIMIT = 1410  # 23:30
 
     # 1. 初始化结果
     result_person = {'姓名': name}
@@ -223,45 +250,49 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
 
     # 遍历每一天
     for record_day in record_week:
-        checkin_date = record_day['checkin_date']  # 格式通常为 "20240901"
-        day_str = format_datetime(checkin_date)  # 格式为 "09-01"
+        checkin_date = record_day['checkin_date']  # "20251001"
+        day_str = format_datetime(checkin_date)  # "10-01"
 
-        # 将 checkin_date (如 "20240901") 转为 "2024-09-01"
+        # 转为 "YYYY-MM-DD" 用于查集合
         current_date_obj = datetime.strptime(str(checkin_date), "%Y%m%d")
         check_date_str = current_date_obj.strftime("%Y-%m-%d")
 
+        # === 优先级 0: 节假日 (最高优，直接跳过) ===
+        # 如果今天是周三但国庆放假，这里直接跳过，不会进入下面的缺勤统计，逻辑正确
+        if check_date_str in holiday_dates:
+            result_person[day_str] = {
+                'am_in': '(节假日)', 'am_out': '(节假日)',
+                'pm_in': '(节假日)', 'pm_out': '(节假日)',
+                'eve_in': '(节假日)', 'eve_out': '(节假日)'
+            }
+            continue
+
+        # === 优先级 1: 请假 ===
         if check_date_str in leave_dates:
-            # 1. 当天标记为(请假)
-            display_times = {
+            result_person[day_str] = {
                 'am_in': '(请假)', 'am_out': '(请假)',
                 'pm_in': '(请假)', 'pm_out': '(请假)',
                 'eve_in': '(请假)', 'eve_out': '(请假)'
             }
-            result_person[day_str] = display_times
-
-            # 2. 无考勤：不累加 total_hours，不算有效出勤天数
-            # 3. 跳过后续常规打卡计算
             continue
 
+        # === 优先级 2: 出差 ===
         if check_date_str in travel_dates:
-            # 如果是出差日：
-            # 1. 当天标记为(出差)
-            display_times = {
+            result_person[day_str] = {
                 'am_in': '(出差)', 'am_out': '(出差)',
                 'pm_in': '(出差)', 'pm_out': '(出差)',
                 'eve_in': '(出差)', 'eve_out': '(出差)'
             }
-            result_person[day_str] = display_times
             continue
 
-        # 获取物理打卡时间
-        raw_checkin_records = record_day.get('month_day_data', [])
+        # === 常规计算逻辑 ===
 
+        # 获取物理打卡
+        raw_checkin_records = record_day.get('month_day_data', [])
         # 获取课程时间
         person_schedule = class_schedule.get(name, {})
         day_classes = person_schedule.get(checkin_date, [])
 
-        # --- 1. 收集所有时间点并归类 ---
         am_points = []
         pm_points = []
         eve_points = []
@@ -270,12 +301,9 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
         for r in raw_checkin_records:
             t_str = format_timestamp(r['checkin_time'])
             t_min = time_to_minutes(t_str)
-            if t_min == -1:
-                continue
-
+            if t_min == -1: continue
             point = (t_min, 'phys')
 
-            # 分桶
             if t_min < AM_SPLIT:
                 am_points.append(point)
             elif AM_SPLIT <= t_min < PM_SPLIT:
@@ -283,18 +311,16 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
             else:
                 eve_points.append(point)
 
-        # (B) 处理课程时间 (有课自动算打卡)
+        # (B) 处理课程时间
         for course in day_classes:
             start_min = time_to_minutes(course['start'])
             end_min = time_to_minutes(course['end'])
-            if start_min == -1 or end_min == -1:
-                continue
+            if start_min == -1 or end_min == -1: continue
 
-            # 课程起止点都加入
             p_start = (start_min, 'class')
             p_end = (end_min, 'class')
 
-            # 课程开始归类
+            # Start点归类
             if start_min < AM_SPLIT:
                 am_points.append(p_start)
             elif start_min < PM_SPLIT:
@@ -302,7 +328,7 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
             else:
                 eve_points.append(p_start)
 
-            # 课程结束归类
+            # End点归类
             if end_min < AM_SPLIT:
                 am_points.append(p_end)
             elif end_min < PM_SPLIT:
@@ -310,90 +336,83 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
             else:
                 eve_points.append(p_end)
 
-        # --- 2. 核心计算逻辑 ---
+        # 定义计算函数 (内部闭包)
         def calculate_session(points, start_min_limit, start_max_limit, end_hard_limit=None):
-            if not points:
-                return 0, '-', '-'
+            if not points: return 0, '-', '-'
 
-            # 1. 分离物理打卡点和课程点
             phys_points = sorted([p for p in points if p[1] == 'phys'], key=lambda x: x[0])
             class_points = sorted([p for p in points if p[1] == 'class'], key=lambda x: x[0])
 
             valid_start_time = None
-            start_source = None  # 用于标记来源 ('phys' 或 'class')
+            start_source = None
 
-            # --- A. 尝试寻找有效的物理打卡 ---
+            # 找物理打卡起点
             if phys_points:
                 first_phys = phys_points[0]
                 is_phys_valid = True
-
-                # 如果有时间窗口限制（上午/下午），检查是否越界
                 if start_min_limit is not None and start_max_limit is not None:
                     if not (start_min_limit <= first_phys[0] <= start_max_limit):
                         is_phys_valid = False
-
-                # 如果物理打卡有效，优先采用
                 if is_phys_valid:
                     valid_start_time = first_phys[0]
                     start_source = 'phys'
 
-            # --- B. 如果没有有效物理打卡(迟到/缺卡)，检查是否有课兜底 ---
+            # 没物理打卡，找课程起点兜底
             if valid_start_time is None and class_points:
-                # 只要有课，就视为出勤，并使用上课时间作为开始时间
                 valid_start_time = class_points[0][0]
                 start_source = 'class'
 
-            # --- C. 最终校验起点 ---
-            if valid_start_time is None:
-                return 0, '-', '-'
+            if valid_start_time is None: return 0, '-', '-'
 
-            # --- D. 确定结束时间 ---
+            # 找终点
             all_sorted = sorted(points, key=lambda x: x[0])
             end_time = all_sorted[-1][0]
             end_source = all_sorted[-1][1]
 
-            # --- E. 校验晚上签退硬限制 ---
-            if end_hard_limit is not None and end_time > end_hard_limit:
-                return 0, '-', '-'
+            # 晚间硬限制
+            if end_hard_limit is not None and end_time > end_hard_limit: return 0, '-', '-'
 
             start_str = minutes_to_time_str(valid_start_time) + ("(课)" if start_source == 'class' else "")
 
-            # --- F. 校验单次打卡 ---
-            if valid_start_time == end_time:
-                return 0, start_str, '-'
+            # 起止相同
+            if valid_start_time == end_time: return 0, start_str, '-'
 
-            # --- G. 正常计算 ---
             duration = (end_time - valid_start_time) / 60.0
             end_str = minutes_to_time_str(end_time) + ("(课)" if end_source == 'class' else "")
 
             return duration, start_str, end_str
 
-        # --- 3. 分别计算三个时段 ---
+        # 分段计算
         eff_am, am_in, am_out = calculate_session(am_points, AM_WINDOW_START, AM_WINDOW_END)
         eff_pm, pm_in, pm_out = calculate_session(pm_points, PM_WINDOW_START, PM_WINDOW_END)
         eff_eve, eve_in, eve_out = calculate_session(eve_points, None, None, end_hard_limit=EVE_CHECKOUT_LIMIT)
 
-        # 汇总
-        day_total = eff_am + eff_pm + eff_eve
-        total_hours += day_total
+        total_hours += (eff_am + eff_pm + eff_eve)
 
-        # 记录
-        display_times = {
+        result_person[day_str] = {
             'am_in': am_in, 'am_out': am_out,
             'pm_in': pm_in, 'pm_out': pm_out,
             'eve_in': eve_in, 'eve_out': eve_out
         }
-        result_person[day_str] = display_times
 
-        # 统计缺勤次数：上午缺勤 + 下午缺勤
-        weekday = current_date_obj.weekday()
-        if weekday < 5:
-            if eff_am == 0:
-                missing_count += 1
-            if eff_pm == 0:
-                missing_count += 1
+        # === 统计缺勤次数 (核心修复逻辑) ===
 
-    # --- 4. 最终统计 (此处只包含“实际出勤”) ---
+        # 判定1: 物理上是否是周一至周五
+        is_phys_weekday = current_date_obj.weekday() < 5
+
+        # 判定2: 物理上是否是“调休补班日” (即这一天虽然是周末，但被配置为 swap 上班)
+        # 注意：这里需要你从外部传入 swap_dates 集合
+        is_swap_workday = check_date_str in swap_dates
+
+        # 综合判定: 只要是平日(且没放假) 或者 是调休补班日，就必须出勤
+        # (注：如果 check_date_str 是节假日，上面代码第一步已经 continue 了，所以这里 is_phys_weekday 为 True 也没关系)
+        should_attendance = is_phys_weekday or is_swap_workday
+
+        if should_attendance:
+            if eff_am == 0: missing_count += 1
+            if eff_pm == 0: missing_count += 1
+
+    # 汇总
     total_hours = round(total_hours, 2)
     avg_daily_hours = 0
     if total_work_days > 0:
@@ -408,20 +427,17 @@ def statistic_person(name, record_week, total_work_days, class_schedule, travel_
 
 ####################################################################################################
 
-def statistic(infos, start_date, end_date, class_schedule, workday_count, travel_map, leave_map, exclude_person=None):
+def statistic(infos, start_date, end_date, class_schedule, workday_count, travel_map, leave_map, holiday_dates, swap_dates, exclude_person=None):
     """
-    增加了 travel_map 和 leave_map 参数
+    中间层函数，透传 swap_dates 参数
     """
     result = []
-
     for person_info in infos:
         name = person_info['member_name'].strip()
         if exclude_person and name in exclude_person:
             continue
         try:
-            # 获取该人的出差日期集合
             person_travel_dates = travel_map.get(name, set())
-            # 获取该人的请假日期集合
             person_leave_dates = leave_map.get(name, set())
 
             result.append(
@@ -430,8 +446,10 @@ def statistic(infos, start_date, end_date, class_schedule, workday_count, travel
                     person_info['month_days'],
                     workday_count,
                     class_schedule,
-                    person_travel_dates,  # 出差日期
-                    person_leave_dates  # 请假日期
+                    person_travel_dates,
+                    person_leave_dates,
+                    holiday_dates,
+                    swap_dates  # <--- 传入到单人统计
                 )
             )
         except Exception as e:
@@ -443,14 +461,17 @@ def statistic(infos, start_date, end_date, class_schedule, workday_count, travel
 ####################################################################################################
 
 def fetch(conn, cursor, token, req_data):
+    """
+    入口函数，从数据库获取调休配置并生成 swap_dates 集合
+    """
     start_date = req_data['start_date']
     end_date = req_data['end_date']
-    attendance_days = req_data['attendance_days']  # 应出勤天数
+    attendance_days = req_data['attendance_days']
 
     start_date_format = datetime.strptime(start_date, "%Y%m%d").date()
     end_date_format = datetime.strptime(end_date, "%Y%m%d").date()
 
-    # 1. 获取课表和开学时间
+    # 1. 获取课表学期配置
     cursor.execute("""
         SELECT id, start_date, end_date
         FROM semester_class
@@ -458,7 +479,6 @@ def fetch(conn, cursor, token, req_data):
         ORDER BY id DESC LIMIT 1
     """)
     row = cursor.fetchone()
-
     semester_id = row["id"]
     semester_start = row["start_date"]
     semester_end = row["end_date"]
@@ -470,15 +490,65 @@ def fetch(conn, cursor, token, req_data):
     """, (semester_id,))
     items = [dict(r) for r in cursor.fetchall()]
 
+    # 2. 获取日历例外配置 (调休/节假日)
+    # 假设 start_date 为 "20251001"，转为 "2025-10-01" 查库
+    q_start = datetime.strptime(start_date, "%Y%m%d").strftime("%Y-%m-%d")
+    q_end = datetime.strptime(end_date, "%Y%m%d").strftime("%Y-%m-%d")
+
+    cursor.execute("""
+        SELECT date, type, swap_date, description 
+        FROM calendar_override 
+        WHERE date >= ? AND date <= ?
+    """, (q_start, q_end))
+
+    override_rows = cursor.fetchall()
+
+    override_map = {}
+    holiday_dates = set()
+    swap_dates = set()  # <--- 新增：存储所有调休补班的物理日期 (格式 YYYY-MM-DD)
+
+    for r in override_rows:
+        # 将数据库 date (可能是 date 对象或 str) 统一转为 YYYYMMDD (用于排课 key) 和 YYYY-MM-DD (用于统计集合)
+        raw_date = r['date']
+        if isinstance(raw_date, str):
+            dt = datetime.strptime(raw_date, "%Y-%m-%d")
+        else:
+            dt = datetime(raw_date.year, raw_date.month, raw_date.day)
+
+        k_date = dt.strftime("%Y%m%d")
+        fmt_date = dt.strftime("%Y-%m-%d")
+
+        # 构建 map (给排课用)
+        val = {"type": r['type']}
+        if r['type'] == 'swap' and r['swap_date']:
+            # 处理 swap_date
+            s_date = r['swap_date']
+            if isinstance(s_date, str):
+                val['swap_date'] = datetime.strptime(s_date, "%Y-%m-%d")
+            else:
+                val['swap_date'] = datetime(s_date.year, s_date.month, s_date.day)
+
+        override_map[k_date] = val
+
+        # 构建节假日集合
+        if r['type'] == 'holiday':
+            holiday_dates.add(fmt_date)
+
+        # 构建调休工作日集合 (新增逻辑)
+        if r['type'] == 'swap':
+            swap_dates.add(fmt_date)
+
+    # 3. 生成课表 (传入 override_map)
     class_info = generate_class_schedule(
         start_date,
         end_date,
         items,
         semester_start,
-        semester_end
+        semester_end,
+        override_map
     )
 
-    # 2. 获取出差记录
+    # 4. 获取出差记录
     cursor.execute("""
         SELECT name, start_date, end_date, avg_working_hours
         FROM "travel"
@@ -490,25 +560,20 @@ def fetch(conn, cursor, token, req_data):
     travel_map = defaultdict(set)
     working_hour = {}
     for user_name, start_str, end_str, avg_working_hours in rows:
-        # 字符串转日期
         trip_start = datetime.strptime(start_str, '%Y-%m-%d').date()
         trip_end = datetime.strptime(end_str, '%Y-%m-%d').date()
-        # 实际统计开始 = max(出差开始, 查询开始)
         calc_start = max(trip_start, start_date_format)
-        # 实际统计结束 = min(出差结束, 查询结束)
         calc_end = min(trip_end, end_date_format)
-        # 计算该段出差在查询范围内的天数
         days_in_range = 0
         current_date = calc_start
         while current_date <= calc_end:
             travel_map[user_name].add(current_date.strftime("%Y-%m-%d"))
             current_date += timedelta(days=1)
             days_in_range += 1
-        # 累加出差补录时长 (天数 * 日均工时)
         current_total = working_hour.get(user_name, 0)
         working_hour[user_name] = current_total + (avg_working_hours * days_in_range)
 
-    # 3. 获取请假记录
+    # 5. 获取请假记录
     cursor.execute("""
         SELECT name, start_date, end_date
         FROM "leave"
@@ -519,19 +584,16 @@ def fetch(conn, cursor, token, req_data):
     rows = cursor.fetchall()
     leave_map = defaultdict(set)
     for user_name, start_str, end_str in rows:
-        # 字符串转日期
         trip_start = datetime.strptime(start_str, '%Y-%m-%d').date()
         trip_end = datetime.strptime(end_str, '%Y-%m-%d').date()
-        # 实际统计开始 = max(请假开始, 查询开始)
         calc_start = max(trip_start, start_date_format)
-        # 实际统计结束 = min(请假结束, 查询结束)
         calc_end = min(trip_end, end_date_format)
         current_date = calc_start
         while current_date <= calc_end:
             leave_map[user_name].add(current_date.strftime("%Y-%m-%d"))
             current_date += timedelta(days=1)
 
-    # 4. 获取实验室配置 (排除名单)
+    # 6. 获取实验室配置
     cursor.execute('SELECT * FROM attendance_config ORDER BY id DESC')
     rows = cursor.fetchall()
     lab_info = {}
@@ -544,16 +606,13 @@ def fetch(conn, cursor, token, req_data):
                 excluded_list = [name.strip() for name in row["excluded_name"].split(',') if name.strip()]
         lab_info[row["lab"]] = excluded_list
 
-    # 5. 统计所有数据
+    # 7. 统计数据
     data_list = []
     for toke in token:
         lab = toke['name']
         exclude_person = lab_info.get(lab, [])
-
-        # 获取原始打卡数据
         raw_data = fetchdata(start_date, end_date, toke['Authorization'], toke['org_id'], toke['member_id'])
 
-        # 处理单人统计 (传入 travel_map 和 leave_map)
         processed_data = statistic(
             raw_data,
             start_date,
@@ -562,38 +621,30 @@ def fetch(conn, cursor, token, req_data):
             workday_count=attendance_days,
             travel_map=travel_map,
             leave_map=leave_map,
+            holiday_dates=holiday_dates,
+            swap_dates=swap_dates,  # <--- 核心修改：传入调休工作日集合
             exclude_person=exclude_person
         )
         data_list.extend(processed_data)
 
-    # 6. 后处理：计算最终时长、排序
+    # 8. 后处理
     final_list = []
     for person_data in data_list:
         name = person_data['姓名']
-
-        # 获取基础数据
         actual_hours = person_data.get('实际出勤时长', 0)
-
-        # 获取出差补录时长
         travel_add_hours = working_hour.get(name, 0)
-
-        # 计算最终出勤时长
         final_total_hours = actual_hours + travel_add_hours
 
-        # 重新计算日均考勤时长 (基于最终时长)
         new_avg_daily = 0
         if attendance_days > 0:
             new_avg_daily = round(final_total_hours / attendance_days, 2)
 
-        # 更新/新增字段
         person_data['出差补录时长'] = round(travel_add_hours, 2)
         person_data['最终出勤时长'] = round(final_total_hours, 2)
         person_data['日均考勤时长'] = new_avg_daily
 
-    # 根据 '最终出勤时长' 进行降序排序
     data_list.sort(key=lambda x: x['最终出勤时长'], reverse=True)
 
-    # 添加排名并调整顺序
     for index, person_data in enumerate(data_list):
         ordered_data = {'排名': index + 1}
         ordered_data.update(person_data)
