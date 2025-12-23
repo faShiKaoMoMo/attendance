@@ -79,13 +79,8 @@ def generate_class_schedule(start_date_str, end_date_str, items, semester_start_
     end_date = datetime.strptime(end_date_str, "%Y%m%d")
 
     # 学期起止
-    ref_date = datetime(2025, 9, 1)
-    if semester_start_input:
-        ref_date = parse_flexible_date(semester_start_input, ref_date)
-
-    ref_end_date = datetime(2099, 12, 31)
-    if semester_end_input:
-        ref_end_date = parse_flexible_date(semester_end_input, ref_end_date)
+    ref_date = datetime.strptime(semester_start_input, "%Y-%m-%d")
+    ref_end_date = datetime.strptime(semester_end_input, "%Y-%m-%d")
 
     # 解析 slot
     parsed_items = []
