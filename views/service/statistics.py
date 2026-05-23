@@ -277,13 +277,14 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         swap_map: 调休映射字典 { "YYYY-MM-DD": datetime_obj }
     """
     # --- 配置常量 (分钟) ---
-    AM_WINDOW_START = 450  # 07:30
-    AM_WINDOW_END = 570  # 09:30
-    AM_SPLIT = 810  # 13:30
-    PM_WINDOW_START = 810  # 13:30
-    PM_WINDOW_END = 870  # 14:30
-    PM_SPLIT = 1110  # 18:30
-    EVE_CHECKOUT_LIMIT = 1410  # 23:30
+    MORNING_REQUIRED_START = 570  # 09:30
+    MORNING_REQUIRED_END = 690  # 11:30
+    AFTERNOON_REQUIRED_START = 870  # 14:30
+    AFTERNOON_REQUIRED_END = 1050  # 17:30
+    LUNCH_START = 720  # 12:00
+    LUNCH_END = 780  # 13:00
+    DINNER_START = 1080  # 18:00
+    DINNER_END = 1140  # 19:00
 
     # 1. 初始化结果
     result_person = {'姓名': name}
@@ -339,9 +340,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         person_schedule = class_schedule.get(name, {})
         day_classes = person_schedule.get(checkin_date_str, [])
 
-        am_points = []
-        pm_points = []
-        eve_points = []
+        day_points = []
 
         # (A) 处理物理打卡
         for r in raw_checkin_records:
@@ -349,13 +348,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             t_min = time_to_minutes(t_str)
             if t_min == -1: continue
 
-            point = (t_min, 'phys')
-            if t_min < AM_SPLIT:
-                am_points.append(point)
-            elif AM_SPLIT <= t_min < PM_SPLIT:
-                pm_points.append(point)
-            else:
-                eve_points.append(point)
+            day_points.append((t_min, 'phys'))
 
         # (B) 处理课程时间
         for course in day_classes:
@@ -363,22 +356,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             end_min = time_to_minutes(course['end'])
             if start_min == -1 or end_min == -1: continue
 
-            p_start = (start_min, 'class')
-            p_end = (end_min, 'class')
-
-            if start_min < AM_SPLIT:
-                am_points.append(p_start)
-            elif start_min < PM_SPLIT:
-                pm_points.append(p_start)
-            else:
-                eve_points.append(p_start)
-
-            if end_min < AM_SPLIT:
-                am_points.append(p_end)
-            elif end_min < PM_SPLIT:
-                pm_points.append(p_end)
-            else:
-                eve_points.append(p_end)
+            day_points.append((start_min, 'class'))
+            day_points.append((end_min, 'class'))
 
         # === 内部函数：区间计算 (保持不变) ===
         def calculate_session(points, start_min_limit, start_max_limit, end_hard_limit=None):
@@ -435,12 +414,47 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             return duration, start_str, end_str
 
         # 分段计算
-        eff_am, am_in, am_out = calculate_session(am_points, AM_WINDOW_START, AM_WINDOW_END)
-        eff_pm, pm_in, pm_out = calculate_session(pm_points, PM_WINDOW_START, PM_WINDOW_END)
-        eff_eve, eve_in, eve_out = calculate_session(eve_points, None, None, end_hard_limit=EVE_CHECKOUT_LIMIT)
+        def format_point(point):
+            t_min, source = point
+            suffix = "(class)" if source == 'class' else ""
+            return minutes_to_time_str(t_min) + suffix
+
+        def covers_window(start_min, end_min, window_start, window_end):
+            return start_min <= window_start and end_min >= window_end
+
+        eff_day = 0
+        am_in, am_out = '-', '-'
+        pm_in, pm_out = '-', '-'
+        eve_in, eve_out = '-', '-'
+        morning_present = False
+        afternoon_present = False
+
+        day_points.sort(key=lambda x: x[0])
+        if len(day_points) >= 2:
+            first_point = day_points[0]
+            last_point = day_points[-1]
+            day_start = first_point[0]
+            day_end = last_point[0]
+
+            if day_start < day_end:
+                total_minutes = day_end - day_start
+                if covers_window(day_start, day_end, LUNCH_START, LUNCH_END):
+                    total_minutes -= 60
+                if covers_window(day_start, day_end, DINNER_START, DINNER_END):
+                    total_minutes -= 60
+                eff_day = max(total_minutes, 0) / 60.0
+
+                am_in = format_point(first_point)
+                if day_end >= DINNER_START:
+                    eve_out = format_point(last_point)
+                else:
+                    pm_out = format_point(last_point)
+
+                morning_present = covers_window(day_start, day_end, MORNING_REQUIRED_START, MORNING_REQUIRED_END)
+                afternoon_present = covers_window(day_start, day_end, AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END)
 
         # 累计工时
-        total_hours += (eff_am + eff_pm + eff_eve)
+        total_hours += eff_day
 
         # === 核心逻辑3：结果展示处理 ===
         display_data = {
@@ -476,8 +490,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
 
         # === 核心逻辑4：统计缺勤 ===
         if attendance_check_needed:
-            if eff_am == 0: missing_count += 1
-            if eff_pm == 0: missing_count += 1
+            if not morning_present: missing_count += 1
+            if not afternoon_present: missing_count += 1
 
     # 汇总
     total_hours = round(total_hours, 2)
