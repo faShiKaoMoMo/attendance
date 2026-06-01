@@ -735,7 +735,7 @@
         if (!tr.dataset.id) return tr.remove();
         if (!confirm('确定删除?')) return;
 
-        const url = `${API_BASE}/${module}/${tr.dataset.id}/delete`;
+        const url = `/${module}/${tr.dataset.id}/delete`;
         // 复用请求逻辑，虽然这里是POST但没body，稍微适配下
         handleApiRequest(url, {}, () => {
             if (module === 'lab') loadLabData(); else loadAccountData();

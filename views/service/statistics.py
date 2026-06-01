@@ -430,7 +430,16 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         afternoon_present = False
 
         day_points.sort(key=lambda x: x[0])
-        if len(day_points) >= 2:
+        if len(day_points) == 1:
+            only_point = day_points[0]
+            only_time = only_point[0]
+            if only_time < LUNCH_START:
+                am_in = format_point(only_point)
+            elif only_time < DINNER_START:
+                pm_in = format_point(only_point)
+            else:
+                eve_in = format_point(only_point)
+        elif len(day_points) >= 2:
             first_point = day_points[0]
             last_point = day_points[-1]
             day_start = first_point[0]

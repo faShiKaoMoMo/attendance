@@ -267,6 +267,9 @@
         .day-body {
             padding: 10px;
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .entry-item {
@@ -723,7 +726,7 @@
                 <label style="font-size:13px;color:#555;margin-top:12px;display:block;">单双周</label>
                 <select id="dlg-type"
                     style="width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:6px;">
-                    <option value="all">全部</option>
+                    <option value="all">单周&双周</option>
                     <option value="odd">单周</option>
                     <option value="even">双周</option>
                 </select>
@@ -882,7 +885,7 @@
             ["21:00", "21:45"],
         ];
         const DAYS = ["星期一", "星期二", "星期三", "星期四", "星期五"];
-        const WEEK_TYPES = {all: "全部", odd: "单周", even: "双周"};
+        const WEEK_TYPES = {all: "单周&双周", odd: "单周", even: "双周"};
 
         function renderSchedule(items) {
             timeSidebar.innerHTML = "";
@@ -948,28 +951,30 @@
         function createItemElement(it) {
             const div = document.createElement("div");
             div.className = `entry-item week-type-${it.type}`;
+            div.style.width = "fit-content";
+            div.style.maxWidth = "100%";
 
             const nameBox = document.createElement("input");
             nameBox.value = it.name;
             nameBox.disabled = true;
+            nameBox.style.width = "95px";
+            nameBox.style.flex = "0 0 95px";
             nameBox.style.background = "white";
             nameBox.style.color = "#333";
             nameBox.style.opacity = "1";
             nameBox.style.cursor = "default";
+            nameBox.style.textAlign = "center";
 
-            const select = document.createElement("select");
-            select.disabled = true;
-            for (const [k, v] of Object.entries(WEEK_TYPES)) {
-                const opt = document.createElement("option");
-                opt.value = k;
-                opt.textContent = v;
-                if (k === it.type) opt.selected = true;
-                select.appendChild(opt);
-            }
-            select.style.background = "white";
-            select.style.color = "#333";
-            select.style.opacity = "1";
-            select.style.cursor = "default";
+            const weekText = document.createElement("input");
+            weekText.value = WEEK_TYPES[it.type] || it.type;
+            weekText.disabled = true;
+            weekText.style.width = "100px";
+            weekText.style.flex = "0 0 100px";
+            weekText.style.background = "white";
+            weekText.style.color = "#333";
+            weekText.style.opacity = "1";
+            weekText.style.cursor = "default";
+            weekText.style.textAlign = "center";
 
             const del = document.createElement("button");
             del.className = "delete-entry-btn";
@@ -977,7 +982,7 @@
             del.onclick = () => deleteItem(currentSemesterId, it.id);
 
             div.appendChild(nameBox);
-            div.appendChild(select);
+            div.appendChild(weekText);
             div.appendChild(del);
             return div;
         }
