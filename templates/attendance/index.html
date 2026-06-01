@@ -348,18 +348,15 @@
             background-color: #219150; /* 鼠标悬停时稍微深一点的绿色 */
         }
 
-        #captcha-submit-btn {
-            background-color: var(--primary-color);
-        }
-
-        #captcha-submit-btn:hover {
-            background-color: var(--secondary-color);
-        }
-
-        #captcha-input {
-            margin-bottom: 15px;
-            text-align: center;
-            letter-spacing: 2px;
+        #captcha-image {
+            display: block;
+            width: 220px;
+            height: 220px;
+            object-fit: contain;
+            margin: 0 auto 15px auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: #fff;
         }
 
         /* 移动端适配 */
@@ -440,8 +437,7 @@
 
         <!-- 验证码容器 -->
         <div id="captcha-container" style="display: none;">
-            <input type="text" id="captcha-input" placeholder="输入短信验证码">
-            <button id="captcha-submit-btn" class="modal-btn">提交验证</button>
+            <img id="captcha-image" alt="扫码验证二维码">
         </div>
 
         <button id="modal-close-btn" class="modal-btn" style="display:none;">关闭</button>
@@ -465,8 +461,7 @@
 
     // --- 验证码相关元素引用 ---
     const captchaContainer = document.getElementById('captcha-container');
-    const captchaInput = document.getElementById('captcha-input');
-    const captchaSubmitBtn = document.getElementById('captcha-submit-btn');
+    const captchaImage = document.getElementById('captcha-image');
 
     // --- 全局变量 ---
     let allAccounts = [];
@@ -590,55 +585,20 @@
         modalSpinner.style.display = 'block';
         modalCloseBtn.style.display = 'none';
         captchaContainer.style.display = 'none';
+        captchaImage.removeAttribute('src');
         modalCloseBtn.classList.remove('error', 'success');
         modalOverlay.style.display = 'flex';
     }
 
-    function showCaptchaModal(taskId) {
+    function showCaptchaModal(captchaBase64) {
         modalTitle.textContent = '安全验证';
-        modalMessage.textContent = '系统需要您输入短信验证码以继续';
+        modalMessage.textContent = '请使用手机扫描下方二维码以继续';
         modalSpinner.style.display = 'none';
         modalCloseBtn.style.display = 'none';
         captchaContainer.style.display = 'block';
-        captchaInput.value = '';
-        captchaInput.focus();
 
-        captchaSubmitBtn.onclick = () => {
-            submitCaptcha(taskId);
-        };
-    }
-
-    async function submitCaptcha(taskId) {
-        const captchaValue = captchaInput.value.trim();
-        if (!captchaValue) {
-            alert('请输入验证码！');
-            return;
-        }
-
-        modalMessage.textContent = '验证中...';
-        captchaContainer.style.display = 'none';
-        modalSpinner.style.display = 'block';
-
-        try {
-            const response = await fetch(`/attendance/statistics/${taskId}/captcha`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({captcha: captchaValue})
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({error: '验证失败'}));
-                throw new Error(errorData.error || response.statusText);
-            }
-            // 提交成功，继续等待轮询结果
-            showLoadingModal();
-        } catch (error) {
-            modalTitle.textContent = '验证失败';
-            modalMessage.textContent = `${error.message}，请重新输入。`;
-            modalSpinner.style.display = 'none';
-            captchaContainer.style.display = 'block';
-            captchaInput.focus();
-        }
+        const hasDataUrlPrefix = captchaBase64 && captchaBase64.startsWith('data:image');
+        captchaImage.src = hasDataUrlPrefix ? captchaBase64 : `data:image/png;base64,${captchaBase64 || ''}`;
     }
 
     function closeModal() {
@@ -675,7 +635,7 @@
                 } else if (data.status === 2) { // 需要验证码
                     if (data.update_date !== lastCaptchaTimestamp) {
                         lastCaptchaTimestamp = data.update_date;
-                        showCaptchaModal(taskId);
+                        showCaptchaModal(data.captcha);
                     }
                 } else if (data.status === 0) { // 进行中
                     modalMessage.textContent = data.message || '正在努力加载数据...';
