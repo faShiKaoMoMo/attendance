@@ -77,36 +77,6 @@ def get_statistics_by_id(id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@attendance_bp.route('/statistics/<int:id>/captcha', methods=['POST'])
-def update_captcha(id):
-    """
-    接收 captcha 数据并将其写入指定ID的记录中。
-    """
-    try:
-        req_data = request.get_json()
-        if not req_data:
-            return jsonify({"success": False, "error": "Request body 不能为空"}), 400
-
-        captcha = req_data.get('captcha')
-        if not captcha:
-            return jsonify({"success": False, "error": "请求中必须包含 'captcha' 字段"}), 400
-
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE attendance_statistics
-                SET captcha = ?, status=?, update_date = ?
-                WHERE id = ?
-            """, (captcha, StatisticsEnum.RUNNING.code, datetime.now(), id))
-
-            if cursor.rowcount == 0:
-                return jsonify({"success": False, "error": f"未找到ID为 {id} 的数据"}), 404
-
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
 def execute(_id, req_data):
     with sqlite3.connect(DB_FILE, isolation_level=None) as conn:
         conn.row_factory = sqlite3.Row

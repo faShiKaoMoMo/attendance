@@ -33,7 +33,7 @@ def token(conn, cursor, _id, req_data):
     # 配置 Chrome 选项
     chrome_options = webdriver.ChromeOptions()
     # 在无头模式下运行，服务器环境通常没有图形界面
-    chrome_options.add_argument('--headless')
+    # chrome_options.add_argument('--headless')
     # 禁用 GPU 加速，在某些服务器环境中是必需的
     chrome_options.add_argument('--disable-gpu')
     # 解决 DevToolsActivePort 文件不存在的报错
@@ -80,75 +80,26 @@ def token(conn, cursor, _id, req_data):
         """, ("登陆账号", datetime.now(), _id))
         conn.commit()
 
-        # 输入账号
-        mobile_input = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, 'mobile'))
+        # 切换到扫描二维码
+        img = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "div.tab-bar_tab_item__Zd4cN > img"))
         )
-        mobile_input.send_keys(account['mobile'])
+        img.click()
 
-        # 输入密码
-        password_input = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.ID, 'password'))
+        # 保存二维码图片
+        qr_img = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'img[alt="Scan me!"]'))
         )
-        password_input.send_keys(account['password'])
-
-        # 点击登录
-        login_button = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, "//button[span[text()='登 录']]"))
-        )
-        login_button.click()
-
-        # 点击获取验证码
-        get_code_button = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, "//div[text()='获取验证码']"))
-        )
-        get_code_button.click()
+        src = qr_img.get_attribute("src")
+        base64_str = src.split(",", 1)[1]
 
         # 更新状态为需要验证码
         cursor.execute("""
             UPDATE attendance_statistics
-            SET status=?, update_date = ?
+            SET status=?, captcha=?, update_date = ?
             WHERE id = ?
-        """, (StatisticsEnum.NEED_CAPTCHA.code, datetime.now(), _id))
+        """, (StatisticsEnum.NEED_CAPTCHA.code, base64_str, datetime.now(), _id))
         conn.commit()
-
-        # 开始轮询查询验证码是否已经拿到
-        captcha = ''
-        for i in range(0, 60 * 2):
-            cursor.execute("SELECT * FROM attendance_statistics WHERE id = ?", (_id,))
-            row = dict(cursor.fetchone())
-            captcha = row.get('captcha')
-            if captcha:
-                break
-            time.sleep(1)
-        if not captcha:
-            raise RuntimeError("获取验证码超时")
-
-        cursor.execute("""
-            UPDATE attendance_statistics
-            SET message=?, update_date=?
-            WHERE id=?
-        """, ("输入验证码", datetime.now(), _id))
-        conn.commit()
-
-        # 输入验证码
-        verify_code_input = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='请输入验证码']"))
-        )
-        verify_code_input.send_keys(captcha)
-
-        cursor.execute("""
-            UPDATE attendance_statistics
-            SET message=?, update_date=?
-            WHERE id=?
-        """, ("登录账号", datetime.now(), _id))
-        conn.commit()
-
-        # 登录
-        confirm_button = WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.XPATH, "//button[span[text()='确 定']]"))
-        )
-        confirm_button.click()
 
         # 等待加载
         time.sleep(5)

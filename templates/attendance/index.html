@@ -43,7 +43,7 @@
             background-color: white;
             border-radius: 12px;
             box-shadow: var(--shadow);
-            overflow: hidden;
+            overflow: visible;
             margin-bottom: 20px;
         }
 
@@ -52,6 +52,7 @@
             color: white;
             padding: 25px 30px;
             text-align: center;
+            border-radius: 12px 12px 0 0; /* 补回顶部圆角 */
         }
 
         h1 {
@@ -70,6 +71,8 @@
 
         .form-content {
             padding: 30px 40px;
+            background: white;
+            border-radius: 0 0 12px 12px;
         }
 
         /* --- 表单组样式 --- */
