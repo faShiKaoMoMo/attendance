@@ -596,13 +596,21 @@
         modalSpinner.style.display = 'none';
         modalCloseBtn.style.display = 'none';
         captchaContainer.style.display = 'block';
+        captchaImage.style.display = 'block';
 
         const hasDataUrlPrefix = captchaBase64 && captchaBase64.startsWith('data:image');
         captchaImage.src = hasDataUrlPrefix ? captchaBase64 : `data:image/png;base64,${captchaBase64 || ''}`;
     }
 
+    function hideCaptchaModal() {
+        captchaContainer.style.display = 'none';
+        captchaImage.style.display = 'none';
+        captchaImage.removeAttribute('src');
+    }
+
     function closeModal() {
         modalOverlay.style.display = 'none';
+        hideCaptchaModal();
         submitBtn.disabled = false;
         submitBtn.textContent = '开始统计任务';
         if (pollingInterval) {
@@ -619,8 +627,10 @@
                 const response = await fetch(`/attendance/statistics/${taskId}`);
                 if (!response.ok) throw new Error(`Status: ${response.status}`);
                 const data = await response.json();
+                const status = Number(data.status);
+                hideCaptchaModal();
 
-                if (data.status === 1) { // 成功
+                if (status === 1) { // 成功
                     clearInterval(pollingInterval);
                     pollingInterval = null;
                     modalTitle.textContent = '统计完成';
@@ -632,12 +642,14 @@
                     modalCloseBtn.classList.add('success');
                     modalCloseBtn.textContent = '好的';
 
-                } else if (data.status === 2) { // 需要验证码
-                    if (data.update_date !== lastCaptchaTimestamp) {
+                } else if (status === 2) { // 需要验证码
+                    if (data.captcha) {
                         lastCaptchaTimestamp = data.update_date;
                         showCaptchaModal(data.captcha);
                     }
-                } else if (data.status === 0) { // 进行中
+                } else if (status === 0) { // 进行中
+                    modalSpinner.style.display = 'block';
+                    modalCloseBtn.style.display = 'none';
                     modalMessage.textContent = data.message || '正在努力加载数据...';
                 } else { // 失败
                     clearInterval(pollingInterval);
@@ -653,6 +665,7 @@
 
             } catch (error) {
                 clearInterval(pollingInterval);
+                hideCaptchaModal();
                 modalTitle.textContent = '网络错误';
                 modalMessage.textContent = `无法连接服务器: ${error.message}`;
                 modalSpinner.style.display = 'none';

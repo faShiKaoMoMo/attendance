@@ -18,16 +18,6 @@ def token(conn, cursor, _id, req_data):
     cursor.execute("SELECT * FROM attendance_account WHERE id = ?", (req_data["account_id"],))
     account = dict(cursor.fetchone())
 
-    # 先去查缓存
-    today = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute(
-        "SELECT * FROM attendance_token WHERE account_id = ? AND date = ?",
-        (account["id"], today)
-    )
-    row = cursor.fetchone()
-    if row:
-        return json.loads(dict(row).get('token'))
-
     res = []
 
     # 配置 Chrome 选项
@@ -81,7 +71,7 @@ def token(conn, cursor, _id, req_data):
         conn.commit()
 
         # 切换到扫描二维码
-        img = WebDriverWait(driver, 10).until(
+        img = WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "div.tab-bar_tab_item__Zd4cN > img"))
         )
         img.click()
@@ -101,27 +91,29 @@ def token(conn, cursor, _id, req_data):
         """, (StatisticsEnum.NEED_CAPTCHA.code, base64_str, datetime.now(), _id))
         conn.commit()
 
-        # 等待加载
-        time.sleep(5)
+        # 登录界面消失则认为扫码完成
+        WebDriverWait(driver, 60).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, 'div.login_card__jOf\\+a'))
+        )
 
         cursor.execute("""
             UPDATE attendance_statistics
-            SET message=?, update_date=?
+            SET status=?, message=?, update_date=?
             WHERE id=?
-        """, ("登录成功", datetime.now(), _id))
+        """, (StatisticsEnum.RUNNING.code, "登录成功", datetime.now(), _id))
         conn.commit()
 
+        time.sleep(5)
+
         # 抓取所有组织项
-        org_items = driver.find_elements(By.XPATH,
-                                         '//*[@id="root"]/div[2]/div[3]/ul//div[contains(@class,"org_item__KY9pv")]')
+        org_items = driver.find_elements(By.XPATH, '//*[@id="root"]/div[2]/div[3]/ul//div[contains(@class,"org_item__KY9pv")]')
         # 如果没有找到“所有组织项”，说明这个账号只管理了一个组织
         if len(org_items) == 0:
             org_items = [0]
 
         for i in range(len(org_items)):
             if len(org_items) > 1:
-                org_items = driver.find_elements(By.XPATH,
-                                                 '//*[@id="root"]/div[2]/div[3]/ul//div[contains(@class,"org_item__KY9pv")]')
+                org_items = driver.find_elements(By.XPATH, '//*[@id="root"]/div[2]/div[3]/ul//div[contains(@class,"org_item__KY9pv")]')
                 org = org_items[i]
                 org.click()
                 time.sleep(1)
@@ -279,17 +271,5 @@ def token(conn, cursor, _id, req_data):
         raise e
     finally:
         driver.quit()
-
-    # 清空今天之前的缓存
-    cursor.execute(
-        "DELETE FROM attendance_token WHERE date < ?",
-        (today,)
-    )
-    # 写入缓存
-    cursor.execute("""
-    INSERT INTO attendance_token (account_id, date, token, create_date, update_date)
-    VALUES (?, ?, ?, ?, ?)
-    """, (account["id"], today, json.dumps(res, ensure_ascii=False), datetime.now(), datetime.now()))
-    conn.commit()
 
     return res
