@@ -35,15 +35,15 @@ def create_combined_workbook(data, start_date, end_date):
         current_date += timedelta(days=1)
 
     # 左侧固定列 (包含新增的“出差补录时长”和“最终出勤时长”)
-    static_headers = [
+    summary_headers = [
         "排名",
         "姓名",
         "周期出勤时长",
-        "周期缺勤次数",
+        "必在时段不达标次数",
         "日均出勤时长",
         "是否达标"
     ]
-    headers = static_headers + dates
+    headers = summary_headers + ["项目"] + dates
 
     ws.append(headers)
 
@@ -52,14 +52,15 @@ def create_combined_workbook(data, start_date, end_date):
     ws.column_dimensions['A'].width = 6  # 排名
     ws.column_dimensions['B'].width = 12  # 姓名
     ws.column_dimensions['C'].width = 18  # 周期出勤时长（新列）
-    ws.column_dimensions['D'].width = 15  # 周期缺勤次数
+    ws.column_dimensions['D'].width = 20  # 必在时段不达标次数
     ws.column_dimensions['E'].width = 15  # 日均出勤时长
     ws.column_dimensions['F'].width = 10  # 是否达标
+    ws.column_dimensions['G'].width = 12  # 项目
 
     # 动态日期列的宽度设置
     for i in range(len(dates)):
-        # 注意：这里基于 static_headers 的长度自动计算起始列，无需手动修改
-        col_letter = get_column_letter(len(static_headers) + 1 + i)
+        # 注意：这里基于 headers 的固定列长度自动计算起始列，无需手动修改
+        col_letter = get_column_letter(len(summary_headers) + 2 + i)
         ws.column_dimensions[col_letter].width = 13
 
     # 设置表头样式
@@ -70,13 +71,10 @@ def create_combined_workbook(data, start_date, end_date):
         cell.font = openpyxl.styles.Font(bold=True)
 
     # --- 填充数据 ---
-    time_slots_info = [
-        ('am_in', '上午签到'),
-        ('am_out', '上午签退'),
-        ('pm_in', '下午签到'),
-        ('pm_out', '下午签退'),
-        ('eve_in', '晚上签到'),
-        ('eve_out', '晚上签退')
+    row_items = [
+        ('checkin_times', '打卡时间'),
+        ('class_times', '上课时间'),
+        ('duration', '统计时长')
     ]
 
     current_row = 2
@@ -86,7 +84,7 @@ def create_combined_workbook(data, start_date, end_date):
         # 1. 获取数据
         # 注意：data 中的 '日均考勤时长' 已经在上一步计算逻辑中更新为基于最终时长的均值
         avg_hours = person.get("日均考勤时长", 0)
-        is_target_met = "是" if avg_hours >= 8 and person.get("周期缺勤次数", 0) <= 4 else "否"
+        is_target_met = "是" if avg_hours >= 8 and person.get("必在时段不达标次数", 0) <= 4 else "否"
 
         # 构造左侧固定列数据，加入新增字段
         actual_hours = person.get("实际出勤时长", 0)
@@ -98,7 +96,7 @@ def create_combined_workbook(data, start_date, end_date):
             person.get("排名", ""),
             person.get("姓名", ""),
             total_hours_text,  # ⬅ 新的合并列内容
-            person.get("周期缺勤次数", 0),
+            person.get("必在时段不达标次数", 0),
             avg_hours,
             is_target_met
         ]
@@ -106,22 +104,32 @@ def create_combined_workbook(data, start_date, end_date):
         # 2. 写入左侧固定列并合并单元格
         for i, value in enumerate(static_data, start=1):
             ws.cell(row=current_row, column=i, value=value)
-            # 合并6行
+            # 合并3行
             ws.merge_cells(start_row=current_row, start_column=i,
-                           end_row=current_row + 5, end_column=i)
+                           end_row=current_row + 2, end_column=i)
+
+        item_col = len(summary_headers) + 1
+        for row_offset, (_, label) in enumerate(row_items):
+            ws.cell(row=current_row + row_offset, column=item_col, value=label)
 
         # 3. 写入右侧日期详情
         for col_offset, day_key in enumerate(dates):
-            current_col = len(static_headers) + 1 + col_offset
+            current_col = len(summary_headers) + 2 + col_offset
             day_times = person.get(day_key, {})
 
-            for row_offset, (key, _) in enumerate(time_slots_info):
+            for row_offset, (key, _) in enumerate(row_items):
                 time_value = day_times.get(key, '-')
                 ws.cell(row=current_row + row_offset, column=current_col, value=time_value)
 
         # 4. 统一应用样式 (边框 + 对齐 + 隔人换色)
-        for row_index in range(start_row_for_person, start_row_for_person + 6):
-            ws.row_dimensions[row_index].height = 22.5
+        for row_index in range(start_row_for_person, start_row_for_person + 3):
+            max_line_count = 1
+            for col_index in range(1, len(headers) + 1):
+                value = ws.cell(row=row_index, column=col_index).value
+                if isinstance(value, str):
+                    max_line_count = max(max_line_count, value.count("\n") + 1)
+            ws.row_dimensions[row_index].height = max(24, min(120, 18 * max_line_count))
+
             for col_index in range(1, len(headers) + 1):
                 cell = ws.cell(row=row_index, column=col_index)
 
@@ -137,7 +145,7 @@ def create_combined_workbook(data, start_date, end_date):
                 if person_index % 2 == 0:
                     cell.fill = light_yellow_fill
 
-        current_row += 6
+        current_row += 3
 
     return wb
 

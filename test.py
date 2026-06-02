@@ -246,31 +246,32 @@ cursor = conn.cursor()
 
 
 ################################################## 请假表
-# cursor.execute('DROP TABLE IF EXISTS "leave";')
-#
-# cursor.execute("""
-# CREATE TABLE "leave" (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     name TEXT,
-#     start_date DATE,
-#     end_date DATE,
-#     status INTEGER,
-#     description TEXT,
-#     create_date TIMESTAMP,
-#     update_date TIMESTAMP
-# );
-# """)
-#
-# cursor.execute("CREATE INDEX IF NOT EXISTS idx_leave_start_date ON leave(start_date)")
-#
-# test_leave_data = [
-#     ('王文凯', '2025-11-10', '2025-11-10', 1, '面试', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-# ]
-#
-# cursor.executemany("""
-#     INSERT INTO leave (name, start_date, end_date, status, description, create_date, update_date)
-#     VALUES (?, ?, ?, ?, ?, ?, ?)
-# """, test_leave_data)
+cursor.execute('DROP TABLE IF EXISTS "leave";')
+
+cursor.execute("""
+CREATE TABLE "leave" (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    start_date DATE,
+    end_date DATE,
+    type INTEGER, -- 0上午（9:30-11:30），1下午（14:30-17:30），2全天
+    status INTEGER,
+    description TEXT,
+    create_date TIMESTAMP,
+    update_date TIMESTAMP
+);
+""")
+
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_leave_start_date ON leave(start_date)")
+
+test_leave_data = [
+    ('王文凯', '2026-05-29', '2026-05-29', 0, 1, '面试'),
+]
+
+cursor.executemany("""
+    INSERT INTO leave (name, start_date, end_date, type, status, description)
+    VALUES (?, ?, ?, ?, ?, ?)
+""", test_leave_data)
 
 
 

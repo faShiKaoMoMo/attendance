@@ -341,6 +341,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         day_classes = person_schedule.get(checkin_date_str, [])
 
         day_points = []
+        phys_points_for_display = []
+        class_ranges_for_display = []
 
         # (A) 处理物理打卡
         for r in raw_checkin_records:
@@ -349,6 +351,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             if t_min == -1: continue
 
             day_points.append((t_min, 'phys'))
+            phys_points_for_display.append(t_min)
 
         # (B) 处理课程时间
         for course in day_classes:
@@ -358,6 +361,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
 
             day_points.append((start_min, 'class'))
             day_points.append((end_min, 'class'))
+            class_ranges_for_display.append(f"{course['start']}-{course['end']}")
 
         # === 内部函数：区间计算 (保持不变) ===
         def calculate_session(points, start_min_limit, start_max_limit, end_hard_limit=None):
@@ -419,6 +423,11 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             suffix = "(class)" if source == 'class' else ""
             return minutes_to_time_str(t_min) + suffix
 
+        def format_display_times(minutes_list):
+            if not minutes_list:
+                return '-'
+            return "\n".join(minutes_to_time_str(t_min) for t_min in sorted(minutes_list))
+
         def covers_window(start_min, end_min, window_start, window_end):
             return start_min <= window_start and end_min >= window_end
 
@@ -466,34 +475,12 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         total_hours += eff_day
 
         # === 核心逻辑3：结果展示处理 ===
+        # Excel 中每人每天展示三行：真实打卡、课程区间、按原规则计算出的当天时长。
         display_data = {
-            'am_in': am_in, 'am_out': am_out,
-            'pm_in': pm_in, 'pm_out': pm_out,
-            'eve_in': eve_in, 'eve_out': eve_out
+            'checkin_times': format_display_times(phys_points_for_display),
+            'class_times': "\n".join(class_ranges_for_display) if class_ranges_for_display else '-',
+            'duration': round(eff_day, 2)
         }
-
-        # 如果当天没有有效数据（全部为 '-'）
-        is_empty_record = (am_in == '-' and pm_in == '-' and eve_in == '-')
-
-        if is_empty_record:
-            if is_holiday:
-                status_str = '(节假日)'
-                display_data = {k: status_str for k in display_data}
-            elif is_on_leave:
-                status_str = '(请假)'
-                display_data = {k: status_str for k in display_data}
-            elif is_on_travel:
-                status_str = '(出差)'
-                display_data = {k: status_str for k in display_data}
-            elif not should_attendance_day:
-                # 调休休息日或普通周末，且没来 -> 显示横杠
-                display_data = {k: '-' for k in display_data}
-            else:
-                # 应该出勤但没记录 -> 保持 '-', 后面统计缺勤
-                pass
-        else:
-            # 有数据，正常显示
-            pass
 
         result_person[day_str] = display_data
 
@@ -505,7 +492,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
     # 汇总
     total_hours = round(total_hours, 2)
     result_person['实际出勤时长'] = total_hours
-    result_person['周期缺勤次数'] = missing_count
+    result_person['必在时段不达标次数'] = missing_count
 
     return result_person
 
