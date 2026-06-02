@@ -279,14 +279,14 @@
             margin-bottom: 8px;
             padding: 6px;
             border-radius: 6px;
-            background-color: #f0f7ff;
-            border: 1px solid #d0e3ff;
+            background-color: #f8fafc;
+            border: 1px solid #e1e7ef;
             transition: var(--transition);
         }
 
         .entry-item:hover {
-            border-color: var(--primary-color);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
         }
 
         .entry-item input {
@@ -353,15 +353,36 @@
         }
 
         .week-type-all {
-            border-left: 3px solid #27ae60;
+            border-left: 3px solid #3498db;
+            border-color: rgba(52, 152, 219, 0.35);
+            background-color: rgba(52, 152, 219, 0.08);
         }
 
         .week-type-odd {
-            border-left: 3px solid #e74c3c;
+            border-left: 3px solid #f39c12;
+            border-color: rgba(243, 156, 18, 0.35);
+            background-color: rgba(243, 156, 18, 0.08);
         }
 
         .week-type-even {
-            border-left: 3px solid #3498db;
+            border-left: 3px solid #27ae60;
+            border-color: rgba(39, 174, 96, 0.35);
+            background-color: rgba(39, 174, 96, 0.08);
+        }
+
+        .week-type-all:hover {
+            border-color: rgba(52, 152, 219, 0.55);
+            background-color: rgba(52, 152, 219, 0.12);
+        }
+
+        .week-type-odd:hover {
+            border-color: rgba(243, 156, 18, 0.55);
+            background-color: rgba(243, 156, 18, 0.12);
+        }
+
+        .week-type-even:hover {
+            border-color: rgba(39, 174, 96, 0.55);
+            background-color: rgba(39, 174, 96, 0.12);
         }
 
         /* 弹窗样式 */
