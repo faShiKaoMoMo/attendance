@@ -272,7 +272,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         record_week: 考勤原始数据列表
         class_schedule: 课表字典
         travel_dates: 出差日期集合 (set of "YYYY-MM-DD")
-        leave_dates: 请假日期集合 (set of "YYYY-MM-DD")
+        leave_dates: 请假信息。新结构为 {date: set(type)}，兼容旧结构 set(date)
         holiday_dates: 节假日日期集合 (set of "YYYY-MM-DD")
         swap_map: 调休映射字典 { "YYYY-MM-DD": datetime_obj }
     """
@@ -305,7 +305,11 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
 
         # === 核心逻辑1：判断当天“是否应出勤” (考核标准) ===
         is_holiday = check_date_iso in holiday_dates
-        is_on_leave = check_date_iso in leave_dates
+        if isinstance(leave_dates, dict):
+            leave_types = set(leave_dates.get(check_date_iso, set()))
+        else:
+            leave_types = {2} if check_date_iso in leave_dates else set()
+        is_on_leave = bool(leave_types)
         is_on_travel = check_date_iso in travel_dates
 
         should_attendance_day = False
@@ -328,8 +332,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             else:
                 should_attendance_day = False
 
-        # 考核标记：本该出勤 且 没请假 且 没出差
-        attendance_check_needed = should_attendance_day and not (is_on_leave or is_on_travel)
+        # 考核标记：本该出勤 且 没出差；请假按上午/下午分别豁免
+        attendance_check_needed = should_attendance_day and not is_on_travel
 
         # === 核心逻辑2：计算考勤数据 (无论是否应出勤，只要有数据就算) ===
 
@@ -428,8 +432,32 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
                 return '-'
             return "\n".join(minutes_to_time_str(t_min) for t_min in sorted(minutes_list))
 
+        def get_leave_intervals(types):
+            intervals = []
+            if 2 in types:
+                intervals.extend([
+                    (MORNING_REQUIRED_START, MORNING_REQUIRED_END, '上午（9:30-11:30）'),
+                    (AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END, '下午（14:30-17:30）')
+                ])
+            else:
+                if 0 in types:
+                    intervals.append((MORNING_REQUIRED_START, MORNING_REQUIRED_END, '上午（9:30-11:30）'))
+                if 1 in types:
+                    intervals.append((AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END, '下午（14:30-17:30）'))
+            return intervals
+
+        def calculate_overlap(start_min, end_min, window_start, window_end):
+            return max(0, min(end_min, window_end) - max(start_min, window_start))
+
         def covers_window(start_min, end_min, window_start, window_end):
             return start_min <= window_start and end_min >= window_end
+
+        leave_intervals = get_leave_intervals(leave_types)
+        leave_display = "\n".join(label for _, _, label in leave_intervals) if leave_intervals else '-'
+        morning_leave = any(calculate_overlap(MORNING_REQUIRED_START, MORNING_REQUIRED_END, start, end)
+                            for start, end, _ in leave_intervals)
+        afternoon_leave = any(calculate_overlap(AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END, start, end)
+                              for start, end, _ in leave_intervals)
 
         eff_day = 0
         am_in, am_out = '-', '-'
@@ -479,6 +507,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         display_data = {
             'checkin_times': format_display_times(phys_points_for_display),
             'class_times': "\n".join(class_ranges_for_display) if class_ranges_for_display else '-',
+            'leave_times': leave_display,
             'duration': round(eff_day, 2)
         }
 
@@ -486,8 +515,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
 
         # === 核心逻辑4：统计缺勤 ===
         if attendance_check_needed:
-            if not morning_present: missing_count += 1
-            if not afternoon_present: missing_count += 1
+            if not morning_leave and not morning_present: missing_count += 1
+            if not afternoon_leave and not afternoon_present: missing_count += 1
 
     # 汇总
     total_hours = round(total_hours, 2)
@@ -510,7 +539,7 @@ def statistic(infos, class_schedule, travel_map, leave_map, holiday_dates, swap_
             continue
         try:
             person_travel_dates = travel_map.get(name, set())
-            person_leave_dates = leave_map.get(name, set())
+            person_leave_dates = leave_map.get(name, {})
 
             result.append(
                 statistic_person(
@@ -647,22 +676,26 @@ def fetch(conn, cursor, token, req_data):
 
     # 5. 获取请假记录
     cursor.execute("""
-        SELECT name, start_date, end_date
+        SELECT name, start_date, end_date, type
         FROM "leave"
         WHERE status = 1 
           AND start_date <= ? 
           AND end_date >= ?
     """, (end_date_format, start_date_format))
     rows = cursor.fetchall()
-    leave_map = defaultdict(set)
-    for user_name, start_str, end_str in rows:
+    leave_map = defaultdict(lambda: defaultdict(set))
+    for user_name, start_str, end_str, leave_type in rows:
         trip_start = datetime.strptime(start_str, '%Y-%m-%d').date()
         trip_end = datetime.strptime(end_str, '%Y-%m-%d').date()
         calc_start = max(trip_start, start_date_format)
         calc_end = min(trip_end, end_date_format)
         current_date = calc_start
+        try:
+            normalized_leave_type = int(leave_type)
+        except (TypeError, ValueError):
+            normalized_leave_type = 2
         while current_date <= calc_end:
-            leave_map[user_name].add(current_date.strftime("%Y-%m-%d"))
+            leave_map[user_name][current_date.strftime("%Y-%m-%d")].add(normalized_leave_type)
             current_date += timedelta(days=1)
 
     # 6. 获取实验室配置

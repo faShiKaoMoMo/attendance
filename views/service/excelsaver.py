@@ -61,7 +61,7 @@ def create_combined_workbook(data, start_date, end_date):
     for i in range(len(dates)):
         # 注意：这里基于 headers 的固定列长度自动计算起始列，无需手动修改
         col_letter = get_column_letter(len(summary_headers) + 2 + i)
-        ws.column_dimensions[col_letter].width = 13
+        ws.column_dimensions[col_letter].width = 20
 
     # 设置表头样式
     ws.row_dimensions[1].height = 25
@@ -74,6 +74,7 @@ def create_combined_workbook(data, start_date, end_date):
     row_items = [
         ('checkin_times', '打卡时间'),
         ('class_times', '上课时间'),
+        ('leave_times', '请假时间'),
         ('duration', '统计时长')
     ]
 
@@ -104,9 +105,9 @@ def create_combined_workbook(data, start_date, end_date):
         # 2. 写入左侧固定列并合并单元格
         for i, value in enumerate(static_data, start=1):
             ws.cell(row=current_row, column=i, value=value)
-            # 合并3行
+            # 合并4行
             ws.merge_cells(start_row=current_row, start_column=i,
-                           end_row=current_row + 2, end_column=i)
+                           end_row=current_row + 3, end_column=i)
 
         item_col = len(summary_headers) + 1
         for row_offset, (_, label) in enumerate(row_items):
@@ -122,7 +123,7 @@ def create_combined_workbook(data, start_date, end_date):
                 ws.cell(row=current_row + row_offset, column=current_col, value=time_value)
 
         # 4. 统一应用样式 (边框 + 对齐 + 隔人换色)
-        for row_index in range(start_row_for_person, start_row_for_person + 3):
+        for row_index in range(start_row_for_person, start_row_for_person + 4):
             max_line_count = 1
             for col_index in range(1, len(headers) + 1):
                 value = ws.cell(row=row_index, column=col_index).value
@@ -145,7 +146,7 @@ def create_combined_workbook(data, start_date, end_date):
                 if person_index % 2 == 0:
                     cell.fill = light_yellow_fill
 
-        current_row += 3
+        current_row += 4
 
     return wb
 

@@ -255,8 +255,8 @@ CREATE TABLE "leave" (
     start_date DATE,
     end_date DATE,
     type INTEGER, -- 0上午（9:30-11:30），1下午（14:30-17:30），2全天
-    status INTEGER,
     description TEXT,
+    status INTEGER,
     create_date TIMESTAMP,
     update_date TIMESTAMP
 );
@@ -265,11 +265,13 @@ CREATE TABLE "leave" (
 cursor.execute("CREATE INDEX IF NOT EXISTS idx_leave_start_date ON leave(start_date)")
 
 test_leave_data = [
-    ('王文凯', '2026-05-29', '2026-05-29', 0, 1, '面试'),
+    ('王文凯', '2026-05-29', '2026-05-29', 0, '面试', 1),
+    ('王文凯', '2026-05-28', '2026-05-28', 1, '面试', 1),
+    ('王文凯', '2026-05-27', '2026-05-27', 2, '面试', 1),
 ]
 
 cursor.executemany("""
-    INSERT INTO leave (name, start_date, end_date, type, status, description)
+    INSERT INTO leave (name, start_date, end_date, type, description, status)
     VALUES (?, ?, ?, ?, ?, ?)
 """, test_leave_data)
 

@@ -495,11 +495,12 @@
                 <thead>
                 <tr>
                     <!-- 移除了目的地列，调整了宽度 -->
-                    <th style="width: 20%">申请人</th>
-                    <th style="width: 20%">开始日期</th>
-                    <th style="width: 20%">结束日期</th>
+                    <th style="width: 18%">申请人</th>
+                    <th style="width: 18%">开始日期</th>
+                    <th style="width: 18%">结束日期</th>
+                    <th style="width: 12%">请假类型</th>
                     <th style="width: 15%">状态</th>
-                    <th style="width: 25%">操作</th>
+                    <th style="width: 19%">操作</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -548,6 +549,16 @@
                 <div class="form-group">
                     <label for="end-date">结束日期 *</label>
                     <input type="date" id="end-date" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="leave-type">请假类型 *</label>
+                    <select id="leave-type" class="form-control" required>
+                        <option value="2">全天（9:30-11:30，14:30-17:30）</option>
+                        <option value="0">上午（9:30-11:30）</option>
+                        <option value="1">下午（14:30-17:30）</option>
+                    </select>
                 </div>
             </div>
             <!-- 移除了工时行 -->
@@ -745,7 +756,7 @@
     // 2. 获取列表
     async function renderRecentRequests() {
         const tableBody = document.querySelector('#recent-requests tbody');
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center">加载中...</td></tr>'; // colspan 改为 5
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">加载中...</td></tr>';
 
         try {
             const response = await fetch("/leave/list?pageNo=" + pageInfo.curPage + "&pageSize=" + pageInfo.pageSize);
@@ -755,7 +766,7 @@
 
             tableBody.innerHTML = '';
             if (recentTrips.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center">暂无数据</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">暂无数据</td></tr>';
                 return;
             }
 
@@ -783,6 +794,7 @@
                     <td>${trip.name}</td>
                     <td>${formatDate(trip.start_date)}</td>
                     <td>${formatDate(trip.end_date)}</td>
+                    <td>${formatLeaveType(trip.type)}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td class="action-buttons">
                         <button class="row-btn btn-view" onclick="viewRequestDetails(${trip.id})">查看</button>
@@ -796,7 +808,7 @@
             updatePaginationInfo(data);
 
         } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:red">加载失败: ${error.message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red">加载失败: ${error.message}</td></tr>`;
         }
     }
 
@@ -809,6 +821,7 @@
             'reason': "",      // 前端已移除，传空
             'start_date': document.getElementById('start-date').value,
             'end_date': document.getElementById('end-date').value,
+            'type': Number(document.getElementById('leave-type').value),
             'avg_working_hours': 0, // 前端已移除，传0
             'description': document.getElementById('description').value,
             'status': ApprovalEnum.PENDING,
@@ -857,6 +870,7 @@
             content.innerHTML = `
                 <div style="margin-bottom:10px"><strong>申请人：</strong> ${trip.name}</div>
                 <div style="margin-bottom:10px"><strong>时间：</strong> ${formatDate(trip.start_date)} 至 ${formatDate(trip.end_date)}</div>
+                <div style="margin-bottom:10px"><strong>请假类型：</strong> ${formatLeaveType(trip.type)}</div>
                 <div style="margin-bottom:10px"><strong>状态：</strong> ${statusText}</div>
                 <div style="margin-bottom:10px"><strong>提交时间：</strong> ${formatDate(trip.create_date)}</div>
                 <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px">
@@ -904,6 +918,14 @@
         if (!dateString) return '-';
         const date = new Date(dateString);
         return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    }
+
+    function formatLeaveType(type) {
+        const normalizedType = Number(type);
+        if (normalizedType === 0) return '上午';
+        if (normalizedType === 1) return '下午';
+        if (normalizedType === 2) return '全天';
+        return '-';
     }
 </script>
 </body>

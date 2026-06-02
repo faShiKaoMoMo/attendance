@@ -56,6 +56,7 @@ def handle_add_request():
         name = req_data.get("name")
         start_date = req_data.get("start_date")
         end_date = req_data.get("end_date")
+        leave_type = req_data.get("type", 2)
         description = req_data.get("description")
         status = req_data.get("status")
         now = datetime.now()
@@ -63,41 +64,13 @@ def handle_add_request():
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO leave (name, start_date, end_date, 
-                status, description, create_date, update_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (name, start_date, end_date,
-                      status, description, now, now))
+                INSERT INTO leave (name, start_date, end_date, type, status, description, create_date, update_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (name, start_date, end_date, leave_type, status, description, now, now))
 
             _id = cursor.lastrowid
 
         return jsonify({"success": True, "message": "请假记录新增成功", "id": _id})
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@leave_bp.route('/update', methods=['POST'])
-def handle_update_request():
-    try:
-        req_data = request.get_json()
-        _id = req_data.get("id")
-        name = req_data.get("name")
-        start_date = req_data.get("start_date")
-        end_date = req_data.get("end_date")
-        description = req_data.get("description")
-        status = req_data.get("status")
-        now = datetime.now()
-
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE leave
-                SET name=?, start_date=?, end_date=?, status=?, description=?, update_date=?
-                WHERE id=?
-                """, (name, start_date, end_date, status, description, now, _id))
-
-        return jsonify({"success": True, "message": "请假记录更新成功"})
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
