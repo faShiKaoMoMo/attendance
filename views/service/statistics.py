@@ -347,6 +347,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         day_points = []
         phys_points_for_display = []
         class_ranges_for_display = []
+        class_intervals = []
 
         # (A) 处理物理打卡
         for r in raw_checkin_records:
@@ -366,6 +367,7 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
             day_points.append((start_min, 'class'))
             day_points.append((end_min, 'class'))
             class_ranges_for_display.append(f"{course['start']}-{course['end']}")
+            class_intervals.append((start_min, end_min))
 
         # === 内部函数：区间计算 (保持不变) ===
         def calculate_session(points, start_min_limit, start_max_limit, end_hard_limit=None):
@@ -449,6 +451,15 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
         def calculate_overlap(start_min, end_min, window_start, window_end):
             return max(0, min(end_min, window_end) - max(start_min, window_start))
 
+        def phys_covers_window(minutes_list, window_start, window_end):
+            if len(minutes_list) < 2:
+                return False
+            sorted_minutes = sorted(minutes_list)
+            return sorted_minutes[0] <= window_start and sorted_minutes[-1] >= window_end
+
+        def class_overlaps_window(intervals, window_start, window_end):
+            return any(calculate_overlap(start, end, window_start, window_end) > 0 for start, end in intervals)
+
         def covers_window(start_min, end_min, window_start, window_end):
             return start_min <= window_start and end_min >= window_end
 
@@ -458,6 +469,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
                             for start, end, _ in leave_intervals)
         afternoon_leave = any(calculate_overlap(AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END, start, end)
                               for start, end, _ in leave_intervals)
+        morning_class = class_overlaps_window(class_intervals, MORNING_REQUIRED_START, MORNING_REQUIRED_END)
+        afternoon_class = class_overlaps_window(class_intervals, AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END)
 
         eff_day = 0
         am_in, am_out = '-', '-'
@@ -499,11 +512,14 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
                 morning_present = covers_window(day_start, day_end, MORNING_REQUIRED_START, MORNING_REQUIRED_END)
                 afternoon_present = covers_window(day_start, day_end, AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END)
 
+        morning_present = phys_covers_window(phys_points_for_display, MORNING_REQUIRED_START, MORNING_REQUIRED_END)
+        afternoon_present = phys_covers_window(phys_points_for_display, AFTERNOON_REQUIRED_START, AFTERNOON_REQUIRED_END)
+
         # 累计工时
         total_hours += eff_day
 
         # === 核心逻辑3：结果展示处理 ===
-        # Excel 中每人每天展示三行：真实打卡、课程区间、按原规则计算出的当天时长。
+        # Excel 中每人每天展示四行：真实打卡、课程区间、请假区间、按原规则计算出的当天时长。
         display_data = {
             'checkin_times': format_display_times(phys_points_for_display),
             'class_times': "\n".join(class_ranges_for_display) if class_ranges_for_display else '-',
@@ -515,8 +531,8 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
 
         # === 核心逻辑4：统计缺勤 ===
         if attendance_check_needed:
-            if not morning_leave and not morning_present: missing_count += 1
-            if not afternoon_leave and not afternoon_present: missing_count += 1
+            if not (morning_leave or morning_class or morning_present): missing_count += 1
+            if not (afternoon_leave or afternoon_class or afternoon_present): missing_count += 1
 
     # 汇总
     total_hours = round(total_hours, 2)

@@ -86,6 +86,46 @@ def handle_class_enable(id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@class_bp.route('/<int:id>/edit', methods=['POST'])
+def handle_class_edit(id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "Request body 不能为空"}), 400
+
+        name = data.get("name")
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
+        if not name or not start_date or not end_date:
+            return jsonify({"success": False, "error": "name、start_date、end_date 不能为空"}), 400
+        if start_date > end_date:
+            return jsonify({"success": False, "error": "开始日期不能晚于结束日期"}), 400
+
+        now = datetime.now()
+
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE semester_class
+                SET name = ?, start_date = ?, end_date = ?, update_date = ?
+                WHERE id = ?
+            """, (name, start_date, end_date, now, id))
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "学期课表不存在"}), 404
+
+        return jsonify({
+            "success": True,
+            "id": id,
+            "name": name,
+            "start_date": start_date,
+            "end_date": end_date
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @class_bp.route('/<int:semester_class_id>/item', methods=['GET'])
 def handle_class_item(semester_class_id):
     try:
@@ -134,6 +174,41 @@ def handle_class_item_add(semester_class_id):
                     (semester_class_id, name, week, slot, type, create_date, update_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (semester_class_id, name, week, slot, type_, now, now))
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@class_bp.route('/<int:semester_class_id>/item/<int:item_id>/edit', methods=['POST'])
+def handle_class_item_edit(semester_class_id, item_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "Request body 不能为空"}), 400
+
+        name = data.get("name")
+        week = data.get("week")
+        slot = data.get("slot")
+        type_ = data.get("type")
+
+        if not name or week is None or not slot or not type_:
+            return jsonify({"success": False, "error": "name、week、slot、type 不能为空"}), 400
+        if type_ not in [item.code for item in ClassTypeEnum]:
+            return jsonify({"success": False, "error": "type 只能是 all、odd、even"}), 400
+
+        now = datetime.now()
+
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE semester_class_item
+                SET name = ?, week = ?, slot = ?, type = ?, update_date = ?
+                WHERE semester_class_id = ? AND id = ?
+            """, (name, week, slot, type_, now, semester_class_id, item_id))
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "课表条目不存在"}), 404
 
         return jsonify({"success": True})
     except Exception as e:

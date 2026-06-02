@@ -424,6 +424,33 @@
             font-weight: bold;
         }
 
+        .semester-edit-btn {
+            padding: 10px 20px;
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(243, 156, 18, 0.3);
+            transition: var(--transition);
+        }
+
+        .semester-edit-btn:hover {
+            background-color: #d68910;
+            transform: translateY(-2px);
+        }
+
+        .semester-edit-btn::before {
+            content: "✎";
+            font-size: 16px;
+            font-weight: bold;
+        }
+
         .semester-enable-btn {
             padding: 10px 20px;
             background-color: var(--success-color); /* 绿色 */
@@ -628,11 +655,16 @@
         addSemesterBtn.className = "semester-add-btn";
         addSemesterBtn.textContent = "新增学期";
 
+        const editSemesterBtn = document.createElement("button");
+        editSemesterBtn.className = "semester-edit-btn";
+        editSemesterBtn.textContent = "编辑学期";
+
         const enableSemesterBtn = document.createElement("button");
         enableSemesterBtn.className = "semester-enable-btn";
         enableSemesterBtn.textContent = "启用学期";
 
         actionGroup.appendChild(addSemesterBtn);
+        actionGroup.appendChild(editSemesterBtn);
         actionGroup.appendChild(enableSemesterBtn);
 
         // 放在最右侧（在隐藏的 saveBtn 前/后都无所谓）
@@ -790,6 +822,8 @@
                 endDatePicker.value = "";
                 disableBtn(prevBtn);
                 disableBtn(nextBtn);
+                disableBtn(editSemesterBtn);
+                disableBtn(enableSemesterBtn);
                 timeSidebar.innerHTML = "";
                 contentArea.innerHTML = "";
                 return;
@@ -813,6 +847,8 @@
 
             if (currentIndex === 0) disableBtn(prevBtn); else enableBtn(prevBtn);
             if (currentIndex === semesterList.length - 1) disableBtn(nextBtn); else enableBtn(nextBtn);
+            enableBtn(editSemesterBtn);
+            enableBtn(enableSemesterBtn);
 
             // 切换学期时回到第一个时间段
             currentSlotIndex = 0;
@@ -835,6 +871,9 @@
 
         // 新增学期：调用 /class/add，新增后切到新学期
         addSemesterBtn.onclick = showAddSemesterDialog;
+
+        // 编辑当前学期：调用 /class/<id>/edit，保存后保持当前学期
+        editSemesterBtn.onclick = showEditSemesterDialog;
 
         // 启用当前学期：调用 /class/<id>/enable
         enableSemesterBtn.onclick = async () => {
@@ -871,6 +910,24 @@
 
         async function deleteItem(semId, itemId) {
             await fetch(`/class/${semId}/item/${itemId}/delete`, {method: "POST"});
+            loadItems(semId);
+        }
+
+        async function editItem(semId, item) {
+            const resp = await fetch(`/class/${semId}/item/${item.id}/edit`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    name: item.name,
+                    week: item.week,
+                    slot: item.slot,
+                    type: item.type
+                })
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) {
+                throw new Error(data.error || "服务器错误");
+            }
             loadItems(semId);
         }
 
@@ -953,38 +1010,108 @@
             div.className = `entry-item week-type-${it.type}`;
             div.style.width = "fit-content";
             div.style.maxWidth = "100%";
+            div.style.cursor = "pointer";
+            div.title = "点击编辑课表详情";
 
             const nameBox = document.createElement("input");
             nameBox.value = it.name;
-            nameBox.disabled = true;
+            nameBox.readOnly = true;
             nameBox.style.width = "95px";
             nameBox.style.flex = "0 0 95px";
             nameBox.style.background = "white";
             nameBox.style.color = "#333";
             nameBox.style.opacity = "1";
-            nameBox.style.cursor = "default";
+            nameBox.style.cursor = "pointer";
             nameBox.style.textAlign = "center";
+            nameBox.onclick = (event) => {
+                event.stopPropagation();
+                showEditItemDialog(it);
+            };
 
             const weekText = document.createElement("input");
             weekText.value = WEEK_TYPES[it.type] || it.type;
-            weekText.disabled = true;
+            weekText.readOnly = true;
             weekText.style.width = "100px";
             weekText.style.flex = "0 0 100px";
             weekText.style.background = "white";
             weekText.style.color = "#333";
             weekText.style.opacity = "1";
-            weekText.style.cursor = "default";
+            weekText.style.cursor = "pointer";
             weekText.style.textAlign = "center";
+            weekText.onclick = (event) => {
+                event.stopPropagation();
+                showEditItemDialog(it);
+            };
 
             const del = document.createElement("button");
             del.className = "delete-entry-btn";
             del.textContent = "×";
-            del.onclick = () => deleteItem(currentSemesterId, it.id);
+            del.onclick = (event) => {
+                event.stopPropagation();
+                deleteItem(currentSemesterId, it.id);
+            };
+
+            div.onclick = () => showEditItemDialog(it);
 
             div.appendChild(nameBox);
             div.appendChild(weekText);
             div.appendChild(del);
             return div;
+        }
+
+        function showEditItemDialog(item) {
+            modalBody.innerHTML = `
+            <p style="font-size:17px;font-weight:600;margin-bottom:15px;">编辑课表详情</p>
+
+            <div style="width:260px;margin:0 auto;text-align:left;">
+                <label style="font-size:13px;color:#555;">姓名</label>
+                <input id="dlg-edit-name"
+                    value="${item.name || ''}"
+                    style="width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:6px;">
+
+                <label style="font-size:13px;color:#555;margin-top:12px;display:block;">单双周</label>
+                <select id="dlg-edit-type"
+                    style="width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:6px;">
+                    <option value="all" ${item.type === 'all' ? 'selected' : ''}>单周&双周</option>
+                    <option value="odd" ${item.type === 'odd' ? 'selected' : ''}>单周</option>
+                    <option value="even" ${item.type === 'even' ? 'selected' : ''}>双周</option>
+                </select>
+            </div>
+        `;
+            modalButtons.innerHTML = "";
+
+            const ok = createPrimaryBtn("保存");
+            ok.style.marginRight = "10px";
+            ok.onclick = async () => {
+                const name = document.getElementById("dlg-edit-name").value.trim();
+                const type = document.getElementById("dlg-edit-type").value;
+
+                if (!name) {
+                    alert("请输入姓名");
+                    return;
+                }
+
+                try {
+                    await editItem(currentSemesterId, {
+                        id: item.id,
+                        name,
+                        week: item.week,
+                        slot: item.slot,
+                        type
+                    });
+                    modal.style.display = "none";
+                } catch (e) {
+                    console.error(e);
+                    alert("编辑课表失败：" + e.message);
+                }
+            };
+
+            const cancel = createGrayBtn("取消");
+            cancel.onclick = () => modal.style.display = "none";
+
+            modalButtons.appendChild(ok);
+            modalButtons.appendChild(cancel);
+            modal.style.display = "flex";
         }
 
         function switchTab(tab, id) {
@@ -1062,6 +1189,93 @@
                 } catch (e) {
                     console.error(e);
                     alert("新增学期失败，请稍后重试");
+                }
+            };
+
+            const cancel = createGrayBtn("取消");
+            cancel.onclick = () => {
+                modal.style.display = "none";
+            };
+
+            modalButtons.appendChild(ok);
+            modalButtons.appendChild(cancel);
+
+            modal.style.display = "flex";
+        }
+
+        function showEditSemesterDialog() {
+            if (!currentSemesterId || !semesterList.length) {
+                alert("当前没有可编辑的学期");
+                return;
+            }
+
+            const sem = semesterList[currentIndex];
+
+            modalBody.innerHTML = `
+        <p style="font-size:17px;font-weight:600;margin-bottom:18px;">编辑学期</p>
+
+        <div style="width:280px;margin:0 auto;text-align:left;">
+            <label style="font-size:13px;color:#555;">学期名称</label>
+            <input id="dlg-edit-sem-name"
+                   value="${sem.name || ''}"
+                   style="width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:6px;">
+
+            <label style="font-size:13px;color:#555;margin-top:12px;display:block;">开始日期</label>
+            <input id="dlg-edit-sem-start"
+                   type="date"
+                   value="${sem.start_date || ''}"
+                   style="width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:6px;">
+
+            <label style="font-size:13px;color:#555;margin-top:12px;display:block;">结束日期</label>
+            <input id="dlg-edit-sem-end"
+                   type="date"
+                   value="${sem.end_date || ''}"
+                   style="width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:6px;">
+        </div>
+    `;
+
+            modalButtons.innerHTML = "";
+
+            const ok = createPrimaryBtn("保存");
+            ok.style.marginRight = "10px";
+            ok.onclick = async () => {
+                const name = document.getElementById("dlg-edit-sem-name").value.trim();
+                const start = document.getElementById("dlg-edit-sem-start").value;
+                const end = document.getElementById("dlg-edit-sem-end").value;
+
+                if (!name || !start || !end) {
+                    alert("请完整填写学期名称和起止日期");
+                    return;
+                }
+
+                if (start > end) {
+                    alert("开始日期不能晚于结束日期");
+                    return;
+                }
+
+                try {
+                    const resp = await fetch(`/class/${currentSemesterId}/edit`, {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({
+                            name: name,
+                            start_date: start,
+                            end_date: end
+                        })
+                    });
+
+                    const data = await resp.json();
+
+                    if (!resp.ok || !data.success) {
+                        alert("编辑学期失败：" + (data.error || "服务器错误"));
+                        return;
+                    }
+
+                    modal.style.display = "none";
+                    await loadSemesterList(currentSemesterId);
+                } catch (e) {
+                    console.error(e);
+                    alert("编辑学期失败，请稍后重试");
                 }
             };
 
