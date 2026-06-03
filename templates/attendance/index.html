@@ -124,6 +124,11 @@
 
         .date-input-group {
             flex: 1;
+            position: relative;
+        }
+
+        .date-input {
+            cursor: pointer;
         }
 
         .date-shortcuts {
@@ -148,6 +153,95 @@
             background-color: var(--primary-color);
             color: white;
             box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+        }
+
+        .date-picker {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            width: 280px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+            z-index: 3000;
+            display: none;
+        }
+
+        .date-picker.show {
+            display: block;
+        }
+
+        #end-date-picker {
+            left: auto;
+            right: 0;
+        }
+
+        .date-picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .date-picker-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--dark-color);
+        }
+
+        .date-nav-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            background: var(--light-color);
+            color: var(--dark-color);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .date-nav-btn:hover {
+            background: #e9ecef;
+        }
+
+        .date-weekdays,
+        .date-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .date-weekday {
+            height: 26px;
+            line-height: 26px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        .date-day {
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            background: #fff;
+            color: #495057;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .date-day:hover {
+            background: #eaf4fc;
+        }
+
+        .date-day.selected {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .date-day.empty {
+            visibility: hidden;
         }
 
         /* --- 提交按钮 --- */
@@ -341,11 +435,13 @@
                     <div class="date-inputs-wrapper">
                         <div class="date-input-group">
                             <label for="start-date">开始日期</label>
-                            <input type="date" id="start-date" name="start-date" required>
+                            <input type="text" id="start-date" name="start-date" class="date-input" readonly required autocomplete="off">
+                            <div id="start-date-picker" class="date-picker"></div>
                         </div>
                         <div class="date-input-group">
                             <label for="end-date">结束日期</label>
-                            <input type="date" id="end-date" name="end-date" required>
+                            <input type="text" id="end-date" name="end-date" class="date-input" readonly required autocomplete="off">
+                            <div id="end-date-picker" class="date-picker"></div>
                         </div>
                     </div>
                     <div class="date-shortcuts">
@@ -381,6 +477,8 @@
     // --- 页面元素引用 ---
     const startDateInput = document.getElementById('start-date');
     const endDateInput = document.getElementById('end-date');
+    const startDatePicker = document.getElementById('start-date-picker');
+    const endDatePicker = document.getElementById('end-date-picker');
 
     // --- 模态框元素引用 ---
     const modalOverlay = document.getElementById('status-modal-overlay');
@@ -397,13 +495,108 @@
     // --- 全局变量 ---
     let pollingInterval = null;
     let lastCaptchaTimestamp = null;
+    let activeDateInput = null;
+    let activeDatePicker = null;
+    let pickerMonth = null;
 
     // --- 初始化和事件绑定 ---
     document.addEventListener('DOMContentLoaded', function () {
+        initDatePickers();
         setWeeklyDateRange(); // 默认选本周
         document.getElementById('btn-by-week').addEventListener('click', setWeeklyDateRange);
         document.getElementById('btn-by-month').addEventListener('click', setMonthlyDateRange);
     });
+
+    function initDatePickers() {
+        startDateInput.addEventListener('click', () => openDatePicker(startDateInput, startDatePicker));
+        endDateInput.addEventListener('click', () => openDatePicker(endDateInput, endDatePicker));
+        startDatePicker.addEventListener('click', event => event.stopPropagation());
+        endDatePicker.addEventListener('click', event => event.stopPropagation());
+
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.date-input-group')) {
+                closeDatePickers();
+            }
+        });
+    }
+
+    function parseDateString(dateString) {
+        if (!dateString) return null;
+        const parts = dateString.split('-').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function openDatePicker(input, picker) {
+        activeDateInput = input;
+        activeDatePicker = picker;
+
+        const baseDate = parseDateString(input.value) || new Date();
+        pickerMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+
+        closeDatePickers();
+        picker.classList.add('show');
+        renderDatePicker();
+    }
+
+    function closeDatePickers() {
+        startDatePicker.classList.remove('show');
+        endDatePicker.classList.remove('show');
+    }
+
+    function changePickerMonth(offset) {
+        pickerMonth = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + offset, 1);
+        renderDatePicker();
+    }
+
+    function renderDatePicker() {
+        if (!activeDateInput || !activeDatePicker || !pickerMonth) return;
+
+        const year = pickerMonth.getFullYear();
+        const month = pickerMonth.getMonth();
+        const selectedDate = activeDateInput.value;
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const cells = [];
+
+        for (let i = 0; i < firstDay; i++) {
+            cells.push('<button type="button" class="date-day empty" tabindex="-1"></button>');
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const value = formatDateForInput(date);
+            const classes = ['date-day', value === selectedDate ? 'selected' : ''].filter(Boolean).join(' ');
+            cells.push(`<button type="button" class="${classes}" data-date="${value}">${day}</button>`);
+        }
+
+        activeDatePicker.innerHTML = `
+            <div class="date-picker-header">
+                <button type="button" class="date-nav-btn" data-month-offset="-1">&lt;</button>
+                <div class="date-picker-title">${year}年${month + 1}月</div>
+                <button type="button" class="date-nav-btn" data-month-offset="1">&gt;</button>
+            </div>
+            <div class="date-weekdays">
+                ${weekdays.map(day => `<div class="date-weekday">${day}</div>`).join('')}
+            </div>
+            <div class="date-days">${cells.join('')}</div>
+        `;
+
+        activeDatePicker.querySelectorAll('[data-month-offset]').forEach(button => {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                changePickerMonth(Number(button.dataset.monthOffset));
+            });
+        });
+
+        activeDatePicker.querySelectorAll('[data-date]').forEach(button => {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                activeDateInput.value = button.dataset.date;
+                closeDatePickers();
+            });
+        });
+    }
 
     function setWeeklyDateRange() {
         const today = new Date();
