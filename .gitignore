@@ -5,6 +5,7 @@ env/
 # Python 编译文件
 __pycache__/
 *.pyc
+reports/
 
 # IDE 配置 (PyCharm/VSCode)
 .idea/

@@ -98,7 +98,7 @@ def download_statistics_file(id):
 
         result = json.loads(row["result"])
         filepath = result.get("file")
-        filename = result.get("filename") or f"attendance-report-{id}.xlsx"
+        filename = result.get("filename") or f"考勤-{id}.xlsx"
 
         if not filepath or not os.path.exists(filepath):
             return jsonify({"success": False, "error": "文件不存在"}), 404
@@ -123,7 +123,7 @@ def execute(_id, req_data):
             data = fetch(conn, cursor, toke, req_data)
             file_bytes = excel(conn, cursor, data, req_data)
 
-            filename = f"attendance-report-{req_data['start_date']}-{req_data['end_date']}.xlsx"
+            filename = f"考勤-{req_data['start_date']}-{req_data['end_date']}.xlsx"
             filepath = os.path.join(REPORT_DIR, f"{_id}.xlsx")
             with open(filepath, "wb") as f:
                 f.write(file_bytes)
