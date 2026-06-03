@@ -403,7 +403,6 @@
         setWeeklyDateRange(); // 默认选本周
         document.getElementById('btn-by-week').addEventListener('click', setWeeklyDateRange);
         document.getElementById('btn-by-month').addEventListener('click', setMonthlyDateRange);
-        modalCloseBtn.addEventListener('click', closeModal);
     });
 
     function setWeeklyDateRange() {
@@ -461,6 +460,7 @@
         captchaContainer.style.display = 'none';
         captchaImage.removeAttribute('src');
         modalCloseBtn.classList.remove('error', 'success');
+        modalCloseBtn.onclick = closeModal;
         modalOverlay.style.display = 'flex';
     }
 
@@ -509,13 +509,16 @@
                     pollingInterval = null;
                     modalTitle.textContent = '统计完成';
                     modalTitle.style.color = '#27ae60';
-                    modalMessage.textContent = '统计报告已生成。';
+                    modalMessage.textContent = '统计报告已生成，点击下载。';
                     modalSpinner.style.display = 'none';
                     modalCloseBtn.style.display = 'block';
                     modalCloseBtn.classList.remove('error');
                     modalCloseBtn.classList.add('success');
-                    modalCloseBtn.textContent = '好的';
-
+                    modalCloseBtn.textContent = '下载';
+                    modalCloseBtn.onclick = () => {
+                        window.location.href = `/attendance/statistics/${taskId}/download`;
+                        closeModal();
+                    };
                 } else if (status === 2) { // 需要验证码
                     if (data.captcha) {
                         lastCaptchaTimestamp = data.update_date;
@@ -535,6 +538,7 @@
                     modalCloseBtn.style.display = 'block';
                     modalCloseBtn.classList.add('error');
                     modalCloseBtn.textContent = '关闭';
+                    modalCloseBtn.onclick = closeModal;
                 }
 
             } catch (error) {
@@ -544,6 +548,7 @@
                 modalMessage.textContent = `无法连接服务器: ${error.message}`;
                 modalSpinner.style.display = 'none';
                 modalCloseBtn.style.display = 'block';
+                modalCloseBtn.onclick = closeModal;
             }
         }, 2000);
     }
@@ -595,6 +600,7 @@
             modalSpinner.style.display = 'none';
             modalCloseBtn.style.display = 'block';
             modalCloseBtn.classList.add('error');
+            modalCloseBtn.onclick = closeModal;
         }
     }
 </script>

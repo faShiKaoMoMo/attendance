@@ -185,52 +185,14 @@ def send_email_with_attachments(recipient_list, subject, body, attachments):
 def excel(conn, cursor, data, req_data):
     start_date = req_data['start_date']
     end_date = req_data['end_date']
-    account_id = req_data["account_id"]
 
-    # 1. 生成唯一的 Excel 文件
+    # 生成唯一的 Excel 文件
     # data 中已经包含了 "出差补录时长" 和 "最终出勤时长" 字段
     combined_wb = create_combined_workbook(data, start_date, end_date)
 
-    # 2. 将 Excel 保存到内存
+    # 将 Excel 保存到内存
     virtual_workbook = io.BytesIO()
     combined_wb.save(virtual_workbook)
     virtual_workbook.seek(0)
 
-    # 3. 获取接收者邮箱
-    cursor.execute("SELECT email FROM attendance_account WHERE id = ?", (account_id,))
-    account_row = cursor.fetchone()
-    if not account_row:
-        print("未找到对应的账户邮箱信息")
-        return
-
-    email_list_str = dict(account_row).get('email', '')
-    email_list = [email.strip() for email in email_list_str.split(',') if email.strip()]
-
-    if not email_list:
-        print("邮箱列表为空，跳过发送")
-        return
-
-    # 4. 准备邮件内容
-    email_subject = f"考勤统计报表 ({start_date} 至 {end_date})"
-    email_body = (
-        f"您好，\n\n"
-        f"附件是 {start_date} 到 {end_date} 的考勤统计报表。\n"
-    )
-
-    attachments_to_send = [
-        {
-            'filename': f"考勤报表-{start_date}-{end_date}.xlsx",
-            'content': virtual_workbook.read()
-        }
-    ]
-
-    # 5. 发送邮件
-    send_email_with_attachments(
-        recipient_list=email_list,
-        subject=email_subject,
-        body=email_body,
-        attachments=attachments_to_send
-    )
-
-    virtual_workbook.seek(0)
     return virtual_workbook.getvalue()
