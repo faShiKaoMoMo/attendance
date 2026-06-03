@@ -337,7 +337,7 @@ cursor.executemany("""
 #     DELETE FROM attendance_statistics
 # """)
 
-cursor.execute("PRAGMA table_info(attendance_statistics)")
+cursor.execute("PRAGMA table_info(attendance_account)")
 columns = cursor.fetchall()
 for col in columns:
     print(col)

@@ -152,7 +152,7 @@
             transform: translateY(-2px);
         }
 
-        /* --- 表格样式 (用于实验室和账号) --- */
+        /* --- 表格样式 (用于实验室) --- */
         .table-container {
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -472,7 +472,6 @@
 
     <div class="tabs-nav">
         <button class="tab-btn active" onclick="switchTab('lab')">实验室配置</button>
-        <button class="tab-btn" onclick="switchTab('account')">账号配置</button>
         <button class="tab-btn" onclick="switchTab('calendar')">调课日历</button>
     </div>
 
@@ -497,28 +496,6 @@
                 </table>
             </div>
             <div class="pagination-container" id="lab-pagination"></div>
-        </div>
-
-        <!-- 2. 账号配置 (保持不变) -->
-        <div id="account-tab" class="tab-pane">
-            <div class="controls">
-                <button onclick="addRow('account')" class="add-btn">＋ 新增账号</button>
-            </div>
-            <div class="table-container">
-                <table class="styled-table">
-                    <thead>
-                    <tr>
-                        <th style="width: 10%;">姓名</th>
-                        <th style="width: 10%;">手机号</th>
-                        <th style="width: 30%;">密码</th>
-                        <th style="width: 30%;">邮箱 (逗号分隔)</th> <!-- 给予最大空间 -->
-                        <th style="width: 20%;">操作</th>
-                    </tr>
-                    </thead>
-                    <tbody id="account-list"></tbody>
-                </table>
-            </div>
-            <div class="pagination-container" id="account-pagination"></div>
         </div>
 
         <!-- 3. 日历调休 (全新设计) -->
@@ -611,7 +588,6 @@
     // 状态存储
     const state = {
         lab: {pageNo: 1, pageSize: 10, total: 0},
-        account: {pageNo: 1, pageSize: 10, total: 0},
         calendar: {
             year: new Date().getFullYear(),
             month: new Date().getMonth() + 1, // 1-12
@@ -637,11 +613,10 @@
         });
 
         if (module === 'lab') loadLabData();
-        if (module === 'account') loadAccountData();
         if (module === 'calendar') renderCalendar(); // 切换时渲染日历
     }
 
-    // ==================== 1 & 2. 实验室与账号 (列表逻辑保持) ====================
+    // ==================== 实验室列表 ====================
     // 简略版 Fetch 封装
     async function fetchData(module, endpoint) {
         const {pageNo, pageSize} = state[module];
@@ -659,10 +634,6 @@
 
     function loadLabData() {
         fetchData('lab', '/lab/list');
-    }
-
-    function loadAccountData() {
-        fetchData('account', '/account/list');
     }
 
     function renderList(module, list) {
@@ -683,12 +654,6 @@
                 <td><input class="inp-name" value="${data.name || ''}" placeholder="例如: 翔安"></td>
                 <td><input class="inp-lab" value="${data.lab || ''}" placeholder="实验室名称"></td>
                 <td><input class="inp-excluded" value="${(data.excluded_name || []).join(', ')}" placeholder="姓名逗号隔开"></td>`;
-        } else if (module === 'account') {
-            html = `
-                <td><input class="inp-name" value="${data.name || ''}" placeholder="姓名"></td>
-                <td><input class="inp-mobile" value="${data.mobile || ''}" placeholder="手机号"></td>
-                 <td><input class="inp-pwd" type="text" value="${data.password || ''}" placeholder="密码"></td>
-                <td><input class="inp-email" value="${data.email || ''}" placeholder="邮箱"></td>`;
         }
 
         html += `<td class="action-buttons">
@@ -716,17 +681,10 @@
             const ex = tr.querySelector('.inp-excluded').value.trim();
             payload.excluded_name = ex ? ex.split(/,|，/).map(s => s.trim()) : [];
             url = '/lab/add';
-        } else {
-            payload.name = tr.querySelector('.inp-name').value.trim();
-            payload.mobile = tr.querySelector('.inp-mobile').value.trim();
-            const pwd = tr.querySelector('.inp-pwd').value.trim();
-            payload.email = tr.querySelector('.inp-email').value.trim();
-            if (pwd) payload.password = pwd;
-            url = '/account/add';
         }
 
         handleApiRequest(url, payload, () => {
-            if (module === 'lab') loadLabData(); else loadAccountData();
+            if (module === 'lab') loadLabData();
         });
     }
 
@@ -738,7 +696,7 @@
         const url = `/${module}/${tr.dataset.id}/delete`;
         // 复用请求逻辑，虽然这里是POST但没body，稍微适配下
         handleApiRequest(url, {}, () => {
-            if (module === 'lab') loadLabData(); else loadAccountData();
+            if (module === 'lab') loadLabData();
         });
     }
 
@@ -1004,7 +962,7 @@
 
     function changePage(module, d) {
         state[module].pageNo += d;
-        if (module === 'lab') loadLabData(); else loadAccountData();
+        if (module === 'lab') loadLabData();
     }
 </script>
 

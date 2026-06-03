@@ -15,9 +15,6 @@ from views.enums.enums import *
 
 
 def token(conn, cursor, _id, req_data):
-    cursor.execute("SELECT * FROM attendance_account WHERE id = ?", (req_data["account_id"],))
-    account = dict(cursor.fetchone())
-
     res = []
 
     # 配置 Chrome 选项

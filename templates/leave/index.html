@@ -366,6 +366,10 @@
             flex: 1;
         }
 
+        .date-field {
+            position: relative;
+        }
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -387,6 +391,100 @@
         .form-control:focus {
             outline: none;
             border-color: var(--primary-color);
+        }
+
+        .date-input {
+            cursor: pointer;
+            background-color: #fff;
+        }
+
+        .date-picker {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            width: 280px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+            z-index: 3000;
+            display: none;
+        }
+
+        .date-picker.show {
+            display: block;
+        }
+
+        .date-picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .date-picker-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .date-nav-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            background: var(--light-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .date-nav-btn:hover {
+            background: #e9ecef;
+        }
+
+        .date-weekdays,
+        .date-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .date-weekday {
+            height: 26px;
+            line-height: 26px;
+            text-align: center;
+            color: var(--gray-text);
+            font-size: 12px;
+        }
+
+        .date-day {
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            background: #fff;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .date-day:hover {
+            background: #eaf4fc;
+        }
+
+        .date-day.selected {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .date-day.disabled {
+            color: #c0c4cc;
+            background: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        .date-day.empty {
+            visibility: hidden;
         }
 
         textarea.form-control {
@@ -544,11 +642,17 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="start-date">开始日期 *</label>
-                    <input type="date" id="start-date" class="form-control" required>
+                    <div class="date-field">
+                        <input type="text" id="start-date" class="form-control date-input" readonly required autocomplete="off">
+                        <div id="start-date-picker" class="date-picker"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="end-date">结束日期 *</label>
-                    <input type="date" id="end-date" class="form-control" required>
+                    <div class="date-field">
+                        <input type="text" id="end-date" class="form-control date-input" readonly required autocomplete="off">
+                        <div id="end-date-picker" class="date-picker"></div>
+                    </div>
                 </div>
             </div>
             <div class="form-row">
@@ -620,9 +724,16 @@
     const requestModal = document.getElementById('request-modal');
     const detailModal = document.getElementById('detail-modal');
     const requestForm = document.getElementById('request-form');
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const startDatePicker = document.getElementById('start-date-picker');
+    const endDatePicker = document.getElementById('end-date-picker');
     const modal = document.getElementById('modal');
     const modalBody = document.getElementById('modal-body');
     const modalButtons = document.getElementById('modal-buttons');
+    let activeDateInput = null;
+    let activeDatePicker = null;
+    let pickerMonth = null;
 
     // 通用弹窗控制
     function toggleModal(id, show) {
@@ -630,6 +741,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        initDatePickers();
         initPagination();
         updateDashboard();
         // 绑定按钮
@@ -640,6 +752,138 @@
             addNewRequest();
         });
     });
+
+    function parseDateString(dateString) {
+        if (!dateString) return null;
+        const parts = dateString.split('-').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function getTodayString() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function initDatePickers() {
+        startDateInput.addEventListener('click', () => openDatePicker(startDateInput, startDatePicker));
+        endDateInput.addEventListener('click', () => openDatePicker(endDateInput, endDatePicker));
+        startDatePicker.addEventListener('click', event => event.stopPropagation());
+        endDatePicker.addEventListener('click', event => event.stopPropagation());
+
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.date-field')) {
+                closeDatePickers();
+            }
+        });
+
+        requestForm.addEventListener('reset', function () {
+            setTimeout(closeDatePickers, 0);
+        });
+    }
+
+    function getMinDateForInput(input) {
+        if (input === endDateInput && startDateInput.value) {
+            return startDateInput.value;
+        }
+        return getTodayString();
+    }
+
+    function openDatePicker(input, picker) {
+        activeDateInput = input;
+        activeDatePicker = picker;
+
+        const baseDate = parseDateString(input.value) || parseDateString(getMinDateForInput(input));
+        pickerMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+
+        closeDatePickers();
+        picker.classList.add('show');
+        renderDatePicker();
+    }
+
+    function closeDatePickers() {
+        startDatePicker.classList.remove('show');
+        endDatePicker.classList.remove('show');
+    }
+
+    function formatDateValue(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function changePickerMonth(offset) {
+        pickerMonth = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + offset, 1);
+        renderDatePicker();
+    }
+
+    function renderDatePicker() {
+        if (!activeDateInput || !activeDatePicker || !pickerMonth) return;
+
+        const year = pickerMonth.getFullYear();
+        const month = pickerMonth.getMonth();
+        const minDate = getMinDateForInput(activeDateInput);
+        const selectedDate = activeDateInput.value;
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const cells = [];
+
+        for (let i = 0; i < firstDay; i++) {
+            cells.push('<button type="button" class="date-day empty" tabindex="-1"></button>');
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const value = formatDateValue(date);
+            const isDisabled = value < minDate;
+            const classes = [
+                'date-day',
+                isDisabled ? 'disabled' : '',
+                value === selectedDate ? 'selected' : ''
+            ].filter(Boolean).join(' ');
+            cells.push(`<button type="button" class="${classes}" data-date="${value}" ${isDisabled ? 'disabled' : ''}>${day}</button>`);
+        }
+
+        activeDatePicker.innerHTML = `
+            <div class="date-picker-header">
+                <button type="button" class="date-nav-btn" data-month-offset="-1">&lt;</button>
+                <div class="date-picker-title">${year}年${month + 1}月</div>
+                <button type="button" class="date-nav-btn" data-month-offset="1">&gt;</button>
+            </div>
+            <div class="date-weekdays">
+                ${weekdays.map(day => `<div class="date-weekday">${day}</div>`).join('')}
+            </div>
+            <div class="date-days">${cells.join('')}</div>
+        `;
+
+        activeDatePicker.querySelectorAll('[data-month-offset]').forEach(button => {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                changePickerMonth(Number(button.dataset.monthOffset));
+            });
+        });
+
+        activeDatePicker.querySelectorAll('[data-date]').forEach(button => {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                selectDate(button.dataset.date);
+            });
+        });
+    }
+
+    function selectDate(dateValue) {
+        activeDateInput.value = dateValue;
+
+        if (activeDateInput === startDateInput && endDateInput.value && endDateInput.value < dateValue) {
+            endDateInput.value = dateValue;
+        }
+
+        closeDatePickers();
+    }
 
     // ----------------- 分页逻辑 -----------------
     function initPagination() {
@@ -814,13 +1058,27 @@
 
     // 3. 新增请求
     async function addNewRequest() {
+        const today = getTodayString();
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+
+        if (startDate < today || endDate < today) {
+            showModal('error', '请假日期不能早于今天');
+            return;
+        }
+
+        if (endDate < startDate) {
+            showModal('error', '结束日期不能早于开始日期');
+            return;
+        }
+
         // 构建请求对象，已移除的字段传空值，防止后端报错
         const newRequest = {
             'name': document.getElementById('user-name').value,
             'destination': "", // 前端已移除，传空
             'reason': "",      // 前端已移除，传空
-            'start_date': document.getElementById('start-date').value,
-            'end_date': document.getElementById('end-date').value,
+            'start_date': startDate,
+            'end_date': endDate,
             'type': Number(document.getElementById('leave-type').value),
             'avg_working_hours': 0, // 前端已移除，传0
             'description': document.getElementById('description').value,

@@ -109,62 +109,6 @@
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
         }
 
-        /* --- 自定义下拉框 --- */
-        .custom-select-container {
-            position: relative;
-        }
-
-        #account-selection-display {
-            cursor: pointer;
-            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-            background-repeat: no-repeat;
-            background-position: right 15px top 50%;
-            background-size: 10px auto;
-        }
-
-        .options-list-container {
-            display: none;
-            position: absolute;
-            width: 100%;
-            background-color: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            z-index: 100;
-            margin-top: 5px;
-            max-height: 250px;
-            overflow-y: auto;
-            animation: fadeIn 0.2s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-5px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .account-option {
-            padding: 10px 15px;
-            cursor: pointer;
-            color: #333;
-            border-bottom: 1px solid #f1f3f5;
-            transition: background 0.2s;
-        }
-
-        .account-option:last-child {
-            border-bottom: none;
-        }
-
-        .account-option:hover {
-            background-color: #f0f7ff;
-            color: var(--primary-color);
-        }
-
         /* --- 日期选择区域 --- */
         .date-range-container {
             display: flex;
@@ -386,22 +330,11 @@
 <div class="container">
     <header>
         <h1>考勤统计</h1>
-        <div class="subtitle">选择账户与日期范围以生成报告</div>
+        <div class="subtitle">选择日期范围以生成报告</div>
     </header>
 
     <div class="form-content">
         <form id="attendance-form" onsubmit="startProcess(event)">
-            <!-- 账户选择 -->
-            <div class="form-group">
-                <label for="account-selection-display">选择账户</label>
-                <div class="custom-select-container">
-                    <input type="text" id="account-selection-display" readonly placeholder="请点击选择..." required>
-                    <div id="account-options-list" class="options-list-container">
-                        <!-- JS 填充选项 -->
-                    </div>
-                </div>
-            </div>
-
             <!-- 日期选择 -->
             <div class="form-group">
                 <div class="date-range-container">
@@ -448,8 +381,6 @@
     // --- 页面元素引用 ---
     const startDateInput = document.getElementById('start-date');
     const endDateInput = document.getElementById('end-date');
-    const accountSelectionDisplay = document.getElementById('account-selection-display');
-    const accountOptionsContainer = document.getElementById('account-options-list');
 
     // --- 模态框元素引用 ---
     const modalOverlay = document.getElementById('status-modal-overlay');
@@ -464,72 +395,15 @@
     const captchaImage = document.getElementById('captcha-image');
 
     // --- 全局变量 ---
-    let allAccounts = [];
-    let selectedAccount = null;
     let pollingInterval = null;
     let lastCaptchaTimestamp = null;
 
     // --- 初始化和事件绑定 ---
     document.addEventListener('DOMContentLoaded', function () {
-        fetchAccounts();
         setWeeklyDateRange(); // 默认选本周
         document.getElementById('btn-by-week').addEventListener('click', setWeeklyDateRange);
         document.getElementById('btn-by-month').addEventListener('click', setMonthlyDateRange);
         modalCloseBtn.addEventListener('click', closeModal);
-    });
-
-    // --- 获取和填充账户列表 ---
-    function fetchAccounts() {
-        fetch('/config/account')
-            .then(response => {
-                if (!response.ok) throw new Error(`网络错误! 状态: ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                allAccounts = data.filter(item => item && item.id && item.name && item.mobile && item.password);
-                populateAccountList();
-            })
-            .catch(error => {
-                console.error('无法获取账户列表:', error);
-                accountSelectionDisplay.placeholder = '加载失败，请刷新页面';
-                accountSelectionDisplay.style.borderColor = '#e74c3c';
-            });
-    }
-
-    function populateAccountList() {
-        accountOptionsContainer.innerHTML = '';
-        if (allAccounts.length > 0) {
-            allAccounts.forEach(account => {
-                const option = document.createElement('div');
-                option.className = 'account-option';
-                option.textContent = account.name;
-                option.dataset.accountInfo = JSON.stringify(account);
-                accountOptionsContainer.appendChild(option);
-            });
-        } else {
-            accountOptionsContainer.innerHTML = '<div class="account-option" style="cursor:default; color:#999;">暂无可用账户</div>';
-        }
-    }
-
-    // --- 下拉框交互 ---
-    accountSelectionDisplay.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const isVisible = accountOptionsContainer.style.display === 'block';
-        accountOptionsContainer.style.display = isVisible ? 'none' : 'block';
-    });
-
-    accountOptionsContainer.addEventListener('click', (event) => {
-        const targetOption = event.target.closest('.account-option');
-        if (targetOption && targetOption.dataset.accountInfo) {
-            selectedAccount = JSON.parse(targetOption.dataset.accountInfo);
-            accountSelectionDisplay.value = selectedAccount.name;
-            accountSelectionDisplay.style.borderColor = '#27ae60'; // 选中后边框变绿提示
-            accountOptionsContainer.style.display = 'none';
-        }
-    });
-
-    window.addEventListener('click', () => {
-        accountOptionsContainer.style.display = 'none';
     });
 
     function setWeeklyDateRange() {
@@ -635,7 +509,7 @@
                     pollingInterval = null;
                     modalTitle.textContent = '统计完成';
                     modalTitle.style.color = '#27ae60';
-                    modalMessage.textContent = '统计报告已发送至您的邮箱，请查收。';
+                    modalMessage.textContent = '统计报告已生成。';
                     modalSpinner.style.display = 'none';
                     modalCloseBtn.style.display = 'block';
                     modalCloseBtn.classList.remove('error');
@@ -681,13 +555,12 @@
         const startDateValue = startDateInput.value;
         const endDateValue = endDateInput.value;
 
-        if (!selectedAccount || !startDateValue || !endDateValue) {
-            alert('请完整填写账户和日期信息！');
+        if (!startDateValue || !endDateValue) {
+            alert('请完整填写日期信息！');
             return;
         }
 
         const requestBody = {
-            account_id: selectedAccount.id,
             start_date: startDateValue.replace(/-/g, ''),
             end_date: endDateValue.replace(/-/g, ''),
         };
