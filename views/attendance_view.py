@@ -15,7 +15,27 @@ attendance_bp = Blueprint('attendance', __name__, url_prefix='/attendance')
 
 executor = ThreadPoolExecutor(max_workers=2)
 REPORT_DIR = "reports"
+HISTORY_CLEANUP_THRESHOLD = 100
 os.makedirs(REPORT_DIR, exist_ok=True)
+
+
+def cleanup_old_report_files(current_id):
+    min_keep_id = current_id - HISTORY_CLEANUP_THRESHOLD
+    if min_keep_id <= 0:
+        return
+
+    for filename in os.listdir(REPORT_DIR):
+        if not filename.endswith(".xlsx"):
+            continue
+
+        report_id_text = os.path.splitext(filename)[0]
+        if not report_id_text.isdigit() or int(report_id_text) >= min_keep_id:
+            continue
+
+        try:
+            os.remove(os.path.join(REPORT_DIR, filename))
+        except OSError:
+            pass
 
 
 @attendance_bp.route('/')
@@ -49,6 +69,7 @@ def statistics():
                 """, (params_str, None, StatisticsEnum.RUNNING.code, now, now))
 
                 new_id = cursor.lastrowid
+                cleanup_old_report_files(new_id)
 
             executor.submit(execute, new_id, req_data)
 

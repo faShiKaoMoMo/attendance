@@ -8,6 +8,28 @@ from flask import Blueprint, render_template, request, jsonify
 leave_bp = Blueprint('leave', __name__, url_prefix='/leave')
 
 
+def build_leave_filters():
+    conditions = []
+    params = []
+
+    name = (request.args.get("name") or "").strip()
+    start_date = (request.args.get("start_date") or "").strip()
+    end_date = (request.args.get("end_date") or "").strip()
+
+    if name:
+        conditions.append("name LIKE ?")
+        params.append(f"%{name}%")
+    if start_date:
+        conditions.append("end_date >= ?")
+        params.append(start_date)
+    if end_date:
+        conditions.append("start_date <= ?")
+        params.append(end_date)
+
+    where_sql = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+    return where_sql, params
+
+
 @leave_bp.route('/')
 def index():
     """
@@ -26,7 +48,8 @@ def handle_request_count():
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute('SELECT status, COUNT(*) as cnt FROM leave GROUP BY status')
+            where_sql, params = build_leave_filters()
+            cursor.execute(f'SELECT status, COUNT(*) as cnt FROM leave{where_sql} GROUP BY status', params)
             rows = cursor.fetchall()
 
         item_list = []
@@ -103,15 +126,16 @@ def handle_get_data_by_page():
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            cursor.execute('SELECT COUNT(*) FROM leave')
+            where_sql, params = build_leave_filters()
+            cursor.execute(f'SELECT COUNT(*) FROM leave{where_sql}', params)
             total = cursor.fetchone()[0]
 
-            pageNo = int(request.args.get("pageNo"))
-            pageSize = int(request.args.get("pageSize"))
+            pageNo = int(request.args.get("pageNo", 1))
+            pageSize = int(request.args.get("pageSize", 10))
             offset = (pageNo - 1) * pageSize
-            cursor.execute("""
-            SELECT * FROM leave ORDER BY start_date DESC LIMIT ? OFFSET ?
-            """, (pageSize, offset))
+            cursor.execute(f"""
+            SELECT * FROM leave{where_sql} ORDER BY start_date DESC LIMIT ? OFFSET ?
+            """, (*params, pageSize, offset))
             rows = cursor.fetchall()
 
         data_list = [dict(row) for row in rows]

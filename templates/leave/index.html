@@ -129,8 +129,62 @@
         /* --- 控制栏 --- */
         .controls {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-controls {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            width: 170px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            height: 36px;
+            padding: 0 14px;
+            border: 1px solid var(--primary-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn-search {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-search:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn-reset {
+            background: white;
+            color: var(--primary-color);
+        }
+
+        .btn-reset:hover {
+            background: #eaf4fc;
         }
 
         .add-btn {
@@ -584,6 +638,30 @@
 
         <!-- 2. 操作栏 -->
         <div class="controls">
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="filter-name">姓名</label>
+                    <input type="text" id="filter-name" class="form-control" autocomplete="off">
+                </div>
+                <div class="filter-group">
+                    <label for="filter-start-date">开始日期</label>
+                    <div class="date-field">
+                        <input type="text" id="filter-start-date" class="form-control date-input" readonly autocomplete="off">
+                        <div id="filter-start-date-picker" class="date-picker"></div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-end-date">结束日期</label>
+                    <div class="date-field">
+                        <input type="text" id="filter-end-date" class="form-control date-input" readonly autocomplete="off">
+                        <div id="filter-end-date-picker" class="date-picker"></div>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button type="button" id="filter-search-btn" class="filter-btn btn-search">查询</button>
+                    <button type="button" id="filter-reset-btn" class="filter-btn btn-reset">重置</button>
+                </div>
+            </div>
             <button id="add-request-btn" class="add-btn">新增请假请求</button>
         </div>
 
@@ -728,12 +806,18 @@
     const endDateInput = document.getElementById('end-date');
     const startDatePicker = document.getElementById('start-date-picker');
     const endDatePicker = document.getElementById('end-date-picker');
+    const filterNameInput = document.getElementById('filter-name');
+    const filterStartDateInput = document.getElementById('filter-start-date');
+    const filterEndDateInput = document.getElementById('filter-end-date');
+    const filterStartDatePicker = document.getElementById('filter-start-date-picker');
+    const filterEndDatePicker = document.getElementById('filter-end-date-picker');
     const modal = document.getElementById('modal');
     const modalBody = document.getElementById('modal-body');
     const modalButtons = document.getElementById('modal-buttons');
     let activeDateInput = null;
     let activeDatePicker = null;
     let pickerMonth = null;
+    const datePickerOptions = new Map();
 
     // 通用弹窗控制
     function toggleModal(id, show) {
@@ -746,6 +830,14 @@
         updateDashboard();
         // 绑定按钮
         document.getElementById('add-request-btn').addEventListener('click', () => toggleModal('request-modal', true));
+        document.getElementById('filter-search-btn').addEventListener('click', applyFilters);
+        document.getElementById('filter-reset-btn').addEventListener('click', resetFilters);
+        filterNameInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                applyFilters();
+            }
+        });
 
         requestForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -768,10 +860,10 @@
     }
 
     function initDatePickers() {
-        startDateInput.addEventListener('click', () => openDatePicker(startDateInput, startDatePicker));
-        endDateInput.addEventListener('click', () => openDatePicker(endDateInput, endDatePicker));
-        startDatePicker.addEventListener('click', event => event.stopPropagation());
-        endDatePicker.addEventListener('click', event => event.stopPropagation());
+        setupDatePicker(startDateInput, startDatePicker, {minDate: () => getTodayString()});
+        setupDatePicker(endDateInput, endDatePicker, {minDate: () => startDateInput.value || getTodayString()});
+        setupDatePicker(filterStartDateInput, filterStartDatePicker);
+        setupDatePicker(filterEndDateInput, filterEndDatePicker);
 
         document.addEventListener('click', function (event) {
             if (!event.target.closest('.date-field')) {
@@ -784,18 +876,24 @@
         });
     }
 
+    function setupDatePicker(input, picker, options = {}) {
+        datePickerOptions.set(input, options);
+        input.addEventListener('click', () => openDatePicker(input, picker));
+        picker.addEventListener('click', event => event.stopPropagation());
+    }
+
     function getMinDateForInput(input) {
-        if (input === endDateInput && startDateInput.value) {
-            return startDateInput.value;
-        }
-        return getTodayString();
+        const options = datePickerOptions.get(input) || {};
+        if (!options.minDate) return null;
+        return typeof options.minDate === 'function' ? options.minDate() : options.minDate;
     }
 
     function openDatePicker(input, picker) {
         activeDateInput = input;
         activeDatePicker = picker;
 
-        const baseDate = parseDateString(input.value) || parseDateString(getMinDateForInput(input));
+        const minDate = getMinDateForInput(input);
+        const baseDate = parseDateString(input.value) || parseDateString(minDate) || new Date();
         pickerMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
 
         closeDatePickers();
@@ -806,6 +904,8 @@
     function closeDatePickers() {
         startDatePicker.classList.remove('show');
         endDatePicker.classList.remove('show');
+        filterStartDatePicker.classList.remove('show');
+        filterEndDatePicker.classList.remove('show');
     }
 
     function formatDateValue(date) {
@@ -839,7 +939,7 @@
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
             const value = formatDateValue(date);
-            const isDisabled = value < minDate;
+            const isDisabled = minDate && value < minDate;
             const classes = [
                 'date-day',
                 isDisabled ? 'disabled' : '',
@@ -967,10 +1067,51 @@
 
     // ----------------- API 逻辑 -----------------
 
+    function buildFilterParams() {
+        const params = new URLSearchParams();
+        const name = filterNameInput.value.trim();
+        const startDate = filterStartDateInput.value;
+        const endDate = filterEndDateInput.value;
+
+        if (name) params.set('name', name);
+        if (startDate) params.set('start_date', startDate);
+        if (endDate) params.set('end_date', endDate);
+
+        return params;
+    }
+
+    function validateFilterRange() {
+        const startDate = filterStartDateInput.value;
+        const endDate = filterEndDateInput.value;
+        if (startDate && endDate && endDate < startDate) {
+            showModal('error', '筛选结束日期不能早于开始日期');
+            return false;
+        }
+        return true;
+    }
+
+    function applyFilters() {
+        if (!validateFilterRange()) return;
+        pageInfo.curPage = 1;
+        updateDashboard();
+        renderRecentRequests();
+    }
+
+    function resetFilters() {
+        filterNameInput.value = '';
+        filterStartDateInput.value = '';
+        filterEndDateInput.value = '';
+        pageInfo.curPage = 1;
+        updateDashboard();
+        renderRecentRequests();
+    }
+
     // 1. 获取统计
     async function updateDashboard() {
         try {
-            const response = await fetch('/leave/counts');
+            const params = buildFilterParams();
+            const query = params.toString();
+            const response = await fetch('/leave/counts' + (query ? '?' + query : ''));
             if (!response.ok) throw new Error(`服务器错误: ${response.statusText}`);
             const data = await response.json();
 
@@ -1003,7 +1144,10 @@
         tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">加载中...</td></tr>';
 
         try {
-            const response = await fetch("/leave/list?pageNo=" + pageInfo.curPage + "&pageSize=" + pageInfo.pageSize);
+            const params = buildFilterParams();
+            params.set('pageNo', pageInfo.curPage);
+            params.set('pageSize', pageInfo.pageSize);
+            const response = await fetch("/leave/list?" + params.toString());
             if (!response.ok) throw new Error(`网络错误: ${response.statusText}`);
             const data = await response.json();
             const recentTrips = data.list || [];
@@ -1011,6 +1155,7 @@
             tableBody.innerHTML = '';
             if (recentTrips.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center">暂无数据</td></tr>';
+                updatePaginationInfo(data);
                 return;
             }
 
