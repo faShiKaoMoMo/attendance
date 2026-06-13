@@ -19,8 +19,6 @@ def token(conn, cursor, _id, req_data):
 
     # 配置 Chrome 选项
     chrome_options = webdriver.ChromeOptions()
-    # 在无头模式下运行，服务器环境通常没有图形界面
-    # chrome_options.add_argument('--headless')
     # 禁用 GPU 加速，在某些服务器环境中是必需的
     chrome_options.add_argument('--disable-gpu')
     # 解决 DevToolsActivePort 文件不存在的报错
@@ -32,6 +30,8 @@ def token(conn, cursor, _id, req_data):
     if platform.system() == 'Windows':
         driver = webdriver.Chrome(service=Service('chromedriver.exe'), options=chrome_options)
     else:
+        # 在无头模式下运行，服务器环境通常没有图形界面
+        chrome_options.add_argument('--headless')
         driver = webdriver.Chrome(options=chrome_options)
 
     try:
