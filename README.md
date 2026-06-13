@@ -17,12 +17,10 @@ selenium + flask + sqlite
 ```
 conda activate attendance
 ```
-
 2. 开 4 个 worker 进程
 ```
 nohup gunicorn -w 4 -b 0.0.0.0:5555 app:app > app.log 2>&1 &
 ```
-
 3. 如果出现 SSL 报错
 ```html
 python -m pip uninstall pyOpenSSL cryptography -y
