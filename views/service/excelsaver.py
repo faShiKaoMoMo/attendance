@@ -18,20 +18,26 @@ def create_combined_workbook(data, start_date, end_date):
     # --- 样式定义 ---
     center_align = Alignment(horizontal='center', vertical='center')
 
-    # 隔行变色：淡黄色
-    light_yellow_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+    # 考勤不达标：淡红色
+    light_red_fill = PatternFill(start_color="FCE8E6", end_color="FCE8E6", fill_type="solid")
 
     # 边框样式
     thin_grey_side = Side(style='thin', color='D3D3D3')
     thin_border = Border(left=thin_grey_side, right=thin_grey_side,
                          top=thin_grey_side, bottom=thin_grey_side)
+    person_outline_side = Side(style='medium', color='808080')
 
     # --- 准备表头 ---
     dates = []
+    date_headers = []
+    weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
     current_date = datetime.strptime(start_date, "%Y%m%d")
     end_dt = datetime.strptime(end_date, "%Y%m%d")
     while current_date <= end_dt:
         dates.append(current_date.strftime("%m-%d"))
+        date_headers.append(
+            f"{current_date.strftime('%m-%d')}（{weekday_names[current_date.weekday()]}）"
+        )
         current_date += timedelta(days=1)
 
     # 左侧固定列 (包含新增的“出差补录时长”和“最终出勤时长”)
@@ -43,7 +49,7 @@ def create_combined_workbook(data, start_date, end_date):
         "日均出勤时长",
         "是否达标"
     ]
-    headers = summary_headers + ["项目"] + dates
+    headers = summary_headers + ["项目"] + date_headers
 
     ws.append(headers)
 
@@ -79,7 +85,7 @@ def create_combined_workbook(data, start_date, end_date):
     ]
 
     current_row = 2
-    for person_index, person in enumerate(data):
+    for person in data:
         start_row_for_person = current_row
 
         # 1. 获取数据
@@ -122,7 +128,7 @@ def create_combined_workbook(data, start_date, end_date):
                 time_value = day_times.get(key, '-')
                 ws.cell(row=current_row + row_offset, column=current_col, value=time_value)
 
-        # 4. 统一应用样式 (边框 + 对齐 + 隔人换色)
+        # 4. 统一应用样式（细网格 + 对齐 + 不达标标色）
         for row_index in range(start_row_for_person, start_row_for_person + 4):
             max_line_count = 1
             for col_index in range(1, len(headers) + 1):
@@ -143,8 +149,21 @@ def create_combined_workbook(data, start_date, end_date):
 
                 cell.border = thin_border
 
-                if person_index % 2 == 0:
-                    cell.fill = light_yellow_fill
+                if is_target_met == "否":
+                    cell.fill = light_red_fill
+
+        # 5. 为每个人的四行数据块添加外边框，取消交叉上色后仍能清晰区分。
+        end_row_for_person = start_row_for_person + 3
+        end_col_for_person = len(headers)
+        for row_index in range(start_row_for_person, end_row_for_person + 1):
+            for col_index in range(1, end_col_for_person + 1):
+                cell = ws.cell(row=row_index, column=col_index)
+                cell.border = Border(
+                    left=person_outline_side if col_index == 1 else cell.border.left,
+                    right=person_outline_side if col_index == end_col_for_person else cell.border.right,
+                    top=person_outline_side if row_index == start_row_for_person else cell.border.top,
+                    bottom=person_outline_side if row_index == end_row_for_person else cell.border.bottom,
+                )
 
         current_row += 4
 
