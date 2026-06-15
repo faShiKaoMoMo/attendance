@@ -520,19 +520,23 @@ def statistic_person(name, record_week, class_schedule, travel_dates, leave_date
 
         # === 核心逻辑3：结果展示处理 ===
         # Excel 中每人每天展示四行：真实打卡、课程区间、请假区间、按原规则计算出的当天时长。
+        # === 核心逻辑4：统计缺勤 ===
+        morning_missing = False
+        afternoon_missing = False
+        if attendance_check_needed:
+            morning_missing = not (morning_leave or morning_class or morning_present)
+            afternoon_missing = not (afternoon_leave or afternoon_class or afternoon_present)
+            missing_count += int(morning_missing) + int(afternoon_missing)
+
         display_data = {
             'checkin_times': format_display_times(phys_points_for_display),
             'class_times': "\n".join(class_ranges_for_display) if class_ranges_for_display else '-',
             'leave_times': leave_display,
-            'duration': round(eff_day, 2)
+            'duration': round(eff_day, 2),
+            'has_attendance_issue': morning_missing or afternoon_missing
         }
 
         result_person[day_str] = display_data
-
-        # === 核心逻辑4：统计缺勤 ===
-        if attendance_check_needed:
-            if not (morning_leave or morning_class or morning_present): missing_count += 1
-            if not (afternoon_leave or afternoon_class or afternoon_present): missing_count += 1
 
     # 汇总
     total_hours = round(total_hours, 2)

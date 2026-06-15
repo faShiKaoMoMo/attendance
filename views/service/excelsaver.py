@@ -18,7 +18,7 @@ def create_combined_workbook(data, start_date, end_date):
     # --- 样式定义 ---
     center_align = Alignment(horizontal='center', vertical='center')
 
-    # 考勤不达标：淡红色
+    # 某天存在考勤问题：淡红色
     light_red_fill = PatternFill(start_color="FCE8E6", end_color="FCE8E6", fill_type="solid")
 
     # 边框样式
@@ -126,9 +126,11 @@ def create_combined_workbook(data, start_date, end_date):
 
             for row_offset, (key, _) in enumerate(row_items):
                 time_value = day_times.get(key, '-')
-                ws.cell(row=current_row + row_offset, column=current_col, value=time_value)
+                cell = ws.cell(row=current_row + row_offset, column=current_col, value=time_value)
+                if key == 'checkin_times' and day_times.get('has_attendance_issue', False):
+                    cell.fill = light_red_fill
 
-        # 4. 统一应用样式（细网格 + 对齐 + 不达标标色）
+        # 4. 统一应用样式（细网格 + 对齐）
         for row_index in range(start_row_for_person, start_row_for_person + 4):
             max_line_count = 1
             for col_index in range(1, len(headers) + 1):
@@ -148,9 +150,6 @@ def create_combined_workbook(data, start_date, end_date):
                 )
 
                 cell.border = thin_border
-
-                if is_target_met == "否":
-                    cell.fill = light_red_fill
 
         # 5. 为每个人的四行数据块添加外边框，取消交叉上色后仍能清晰区分。
         end_row_for_person = start_row_for_person + 3
